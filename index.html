@@ -239,6 +239,19 @@
   .explain-box { background:rgba(155,109,255,0.1); border:1px solid rgba(155,109,255,0.2); border-radius:10px; padding:14px; margin:12px 0; line-height:1.7; }
   .explain-box .explain-label { font-size:0.7rem; font-weight:700; color:#9b6dff; margin-bottom:6px; }
 
+  /* Q&A */
+  .popup-qa { border-top:1px solid var(--border); padding:12px 20px 20px; position:sticky; bottom:0; background:var(--surface); }
+  .qa-history { max-height:200px; overflow-y:auto; margin-bottom:8px; }
+  .qa-msg { margin-bottom:8px; font-size:0.85rem; line-height:1.5; }
+  .qa-msg.user { text-align:right; }
+  .qa-msg.user .qa-bubble { background:rgba(108,92,231,0.2); display:inline-block; padding:6px 12px; border-radius:12px 12px 2px 12px; max-width:80%; text-align:left; }
+  .qa-msg.assistant .qa-bubble { background:var(--surface2); display:inline-block; padding:8px 12px; border-radius:12px 12px 12px 2px; max-width:90%; }
+  .qa-input-row { display:flex; gap:6px; }
+  .qa-input { flex:1; padding:10px 14px; background:var(--surface2); border:1px solid var(--border); border-radius:10px; font-size:0.88rem; color:var(--text); outline:none; }
+  .qa-input:focus { border-color:var(--accent); }
+  .qa-send { width:40px; height:40px; border-radius:10px; background:var(--accent,#6c5ce7); border:none; color:#fff; font-size:1rem; cursor:pointer; flex-shrink:0; }
+  .qa-send:hover { opacity:0.8; }
+
   .article-header {
     padding: 14px 16px;
     cursor: pointer;
@@ -673,6 +686,13 @@
     <div class="popup-meta" id="popupMeta"></div>
     <div class="popup-actions" id="popupActions"></div>
     <div class="popup-body" id="popupBody"></div>
+    <div class="popup-qa" id="popupQA">
+      <div class="qa-history" id="qaHistory"></div>
+      <div class="qa-input-row">
+        <input type="text" class="qa-input" id="qaInput" placeholder="この記事について質問..." onkeydown="if(event.key==='Enter')askQuestion()">
+        <button class="qa-send" onclick="askQuestion()">&#9654;</button>
+      </div>
+    </div>
   </div>
 </div>
 
@@ -1247,6 +1267,11 @@ async function toggleArticle(articleId, idx) {
     await fetchArticleContent(article.link, idx);
     if (currentPopupIdx === idx) updatePopupBody(article, idx);
   }
+
+  // Auto-summarize on open
+  if (!summaryCache[article.link] && getApiKey()) {
+    await summarizeArticle(idx);
+  }
 }
 
 function updatePopupBody(article, idx) {
@@ -1289,10 +1314,83 @@ function closePopup() {
   document.getElementById('popupOverlay').classList.remove('open');
   document.body.style.overflow = '';
   currentPopupIdx = null;
+  qaMessages = [];
+  document.getElementById('qaHistory').innerHTML = '';
+  document.getElementById('qaInput').value = '';
 }
 
 // Close with Escape
 document.addEventListener('keydown', e => { if (e.key === 'Escape') closePopup(); });
+
+// ─── Q&A ─────────────────────────────────────────────────────────
+let qaMessages = [];
+
+async function askQuestion() {
+  const input = document.getElementById('qaInput');
+  const question = input.value.trim();
+  if (!question || !getApiKey()) return;
+  input.value = '';
+
+  const articles = articlesCache[currentCategory];
+  const article = articles[currentPopupIdx];
+  if (!article) return;
+
+  // Add user message
+  qaMessages.push({ role: 'user', text: question });
+  renderQA();
+
+  // Build context
+  const content = contentCache[article.link] || article.description || '';
+  const summary = summaryCache[article.link] || article.summary_ja || '';
+
+  const systemPrompt = `あなたはニュース解説アシスタントです。以下の記事について、ユーザーの質問に日本語で簡潔に回答してください。
+
+記事タイトル: ${article.title}
+要約: ${summary}
+本文: ${content.slice(0, 3000)}`;
+
+  const messages = [
+    { role: 'user', content: systemPrompt + '\n\n質問: ' + qaMessages.filter(m=>m.role==='user').map(m=>m.text).join('\n') }
+  ];
+
+  // Show thinking
+  qaMessages.push({ role: 'assistant', text: '...' });
+  renderQA();
+
+  try {
+    const apiKey = getApiKey();
+    const res = await fetch('https://api.anthropic.com/v1/messages', {
+      method: 'POST',
+      headers: {
+        'x-api-key': apiKey,
+        'anthropic-version': '2023-06-01',
+        'content-type': 'application/json',
+        'anthropic-dangerous-direct-browser-access': 'true',
+      },
+      body: JSON.stringify({
+        model: 'claude-haiku-4-5-20251001',
+        max_tokens: 1000,
+        messages,
+      }),
+    });
+    const data = await res.json();
+    const answer = data.content?.[0]?.text || 'エラーが発生しました';
+    qaMessages[qaMessages.length - 1].text = answer;
+  } catch (e) {
+    qaMessages[qaMessages.length - 1].text = '回答の取得に失敗しました';
+  }
+  renderQA();
+}
+
+function renderQA() {
+  const container = document.getElementById('qaHistory');
+  container.innerHTML = qaMessages.map(m => `
+    <div class="qa-msg ${m.role}">
+      <div class="qa-bubble">${escapeHTML(m.text)}</div>
+    </div>
+  `).join('');
+  container.scrollTop = container.scrollHeight;
+}
 
 // ─── Explain Article ─────────────────────────────────────────────
 let explainCache = {};

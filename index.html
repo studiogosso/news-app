@@ -161,8 +161,29 @@
     overflow: hidden;
     transition: var(--transition);
   }
-
   .article-card:hover { background: var(--bg-card-hover); }
+
+  /* Large card (importance 7+) */
+  .card-large { border-width: 2px; }
+  .card-hero { height: 200px; background-size: cover; background-position: center; position: relative; }
+  .card-hero-overlay { position: absolute; inset: 0; background: linear-gradient(to top, rgba(0,0,0,0.85) 0%, transparent 50%); display: flex; flex-direction: column; justify-content: flex-end; padding: 16px; }
+  .card-hero-notimg { padding: 20px 16px; background: linear-gradient(135deg, #1a1d27 0%, #2e3347 100%); }
+  .card-hero-title { font-size: 1.2rem; font-weight: 800; color: #fff; line-height: 1.4; }
+  .card-body { padding: 12px 16px; }
+  .imp-badge { font-size: 0.6rem; font-weight: 800; padding: 3px 8px; border-radius: 4px; display: inline-block; margin-bottom: 6px; }
+  .imp-high { background: #e74c5e; color: #fff; }
+  .imp-mid { background: #fbbf24; color: #000; font-size: 0.55rem; padding: 2px 6px; margin-left: 6px; }
+  .summary-ja { font-size: 0.85rem; color: #e0e0f0; line-height: 1.5; margin: 6px 0; padding: 8px; background: rgba(108,92,231,0.1); border-radius: 8px; border-left: 3px solid; }
+
+  /* Medium card (importance 4-6) */
+  .card-medium .article-title { font-size: 0.95rem; margin-top: 4px; }
+  .card-medium { padding: 12px 14px; }
+  .card-thumb { width: 90px; height: 70px; object-fit: cover; border-radius: 8px; flex-shrink: 0; }
+
+  /* Small card (importance 1-3) */
+  .card-small { padding: 10px 12px; cursor: pointer; margin-bottom: 4px; }
+  .card-small:hover { background: var(--bg-card-hover); }
+  .card-mini-thumb { width: 40px; height: 40px; object-fit: cover; border-radius: 6px; flex-shrink: 0; }
 
   .article-header {
     padding: 14px 16px;
@@ -887,6 +908,21 @@ function parseRSS(xmlText, feed) {
     return [];
   }
 
+  // Extract image from RSS item
+  function getItemImage(item) {
+    // media:content or media:thumbnail
+    const media = item.querySelector('content[url]') || item.getElementsByTagNameNS('http://search.yahoo.com/mrss/', 'content')[0] || item.getElementsByTagNameNS('http://search.yahoo.com/mrss/', 'thumbnail')[0];
+    if (media?.getAttribute('url')) return media.getAttribute('url');
+    // enclosure
+    const enc = item.querySelector('enclosure[type^="image"]');
+    if (enc?.getAttribute('url')) return enc.getAttribute('url');
+    // image tag in description
+    const desc = item.querySelector('description')?.textContent || '';
+    const imgMatch = desc.match(/<img[^>]+src=["']([^"']+)["']/);
+    if (imgMatch) return imgMatch[1];
+    return '';
+  }
+
   // Try RSS format
   let items = doc.querySelectorAll('item');
   if (items.length > 0) {
@@ -896,6 +932,7 @@ function parseRSS(xmlText, feed) {
         title: cleanText(item.querySelector('title')?.textContent || ''),
         link: item.querySelector('link')?.textContent?.trim() || '',
         description: cleanText(stripHTML(item.querySelector('description')?.textContent || '')),
+        image: getItemImage(item),
         pubDate: pubDate,
         dateObj: pubDate ? new Date(pubDate) : null,
         source: feed.name,
@@ -974,30 +1011,59 @@ function renderArticles(category) {
     const isJa = article.lang === 'ja';
     const articleId = `article-${category}-${idx}`;
     const isExpanded = expandedArticle === articleId;
+    const imp = article.importance || 0;
+    const size = imp >= 7 ? 'large' : imp >= 4 ? 'medium' : 'small';
+    const imgUrl = article.image || '';
 
-    return `
-      <div class="article-card" id="card-${articleId}">
-        <div class="article-header" onclick="toggleArticle('${articleId}', ${idx})">
-          <div class="article-source">
-            <span class="source-badge" style="background:${color}">${escapeHTML(article.source)}</span>
-            <span>${formatDate(article.dateObj)}</span>
+    if (size === 'large') {
+      return `
+        <div class="article-card card-large" id="card-${articleId}">
+          ${imgUrl ? `<div class="card-hero" style="background-image:url('${imgUrl}')"><div class="card-hero-overlay">
+            <span class="imp-badge imp-high">重要度 ${imp}/10</span>
+            <div class="card-hero-title">${escapeHTML(article.title)}</div>
+          </div></div>` : `<div class="card-hero-notimg"><span class="imp-badge imp-high">重要度 ${imp}/10</span><div class="card-hero-title">${escapeHTML(article.title)}</div></div>`}
+          <div class="card-body">
+            <div class="article-source"><span class="source-badge" style="background:${color}">${escapeHTML(article.source)}</span><span>${formatDate(article.dateObj)}</span></div>
+            ${article.summary_ja ? `<div class="summary-ja" style="border-color:${color}">📋 ${escapeHTML(article.summary_ja)}</div>` : ''}
+            <div class="article-desc">${escapeHTML(article.description)}</div>
+            <div class="article-actions">
+              ${!isJa ? `<button class="action-btn translate-btn" onclick="event.stopPropagation();translateArticleTitle(${idx})">翻訳</button>` : ''}
+              <button class="action-btn" onclick="event.stopPropagation();toggleArticle('${articleId}',${idx})">詳細</button>
+            </div>
           </div>
-          <div class="article-title">${escapeHTML(article.title)}</div>
-          ${article.summary_ja ? `<div class="article-summary-ja" style="font-size:0.85rem;color:#e0e0f0;line-height:1.5;margin:6px 0;padding:8px;background:rgba(108,92,231,0.1);border-radius:8px;border-left:3px solid ${color}">📋 ${escapeHTML(article.summary_ja)}</div>` : ''}
-          ${article.importance ? `<span style="display:inline-block;font-size:0.65rem;font-weight:700;padding:2px 6px;border-radius:4px;background:${article.importance >= 7 ? '#e74c5e' : article.importance >= 4 ? '#fbbf24' : '#43b581'};color:#000;margin-bottom:4px">重要度 ${article.importance}/10</span>` : ''}
-          <div class="article-desc">${escapeHTML(article.description)}</div>
-        </div>
-        <div class="article-actions">
-          ${!isJa ? `<button class="action-btn translate-btn" onclick="event.stopPropagation(); translateArticleTitle(${idx})">翻訳</button>` : ''}
-          <button class="action-btn" onclick="event.stopPropagation(); toggleArticle('${articleId}', ${idx})">詳細</button>
-        </div>
-        <div class="article-detail ${isExpanded ? 'open' : ''}" id="detail-${articleId}">
-          <div class="article-detail-inner" id="detail-inner-${articleId}">
-            ${isExpanded ? getDetailHTML(article, idx) : ''}
+          <div class="article-detail ${isExpanded?'open':''}" id="detail-${articleId}"><div class="article-detail-inner" id="detail-inner-${articleId}">${isExpanded?getDetailHTML(article,idx):''}</div></div>
+        </div>`;
+    } else if (size === 'medium') {
+      return `
+        <div class="article-card card-medium" id="card-${articleId}">
+          <div style="display:flex;gap:12px">
+            ${imgUrl ? `<img class="card-thumb" src="${imgUrl}" onerror="this.style.display='none'" alt="">` : ''}
+            <div style="flex:1;min-width:0">
+              <div class="article-source"><span class="source-badge" style="background:${color}">${escapeHTML(article.source)}</span><span>${formatDate(article.dateObj)}</span><span class="imp-badge imp-mid">重要度 ${imp}</span></div>
+              <div class="article-title">${escapeHTML(article.title)}</div>
+              ${article.summary_ja ? `<div class="summary-ja" style="border-color:${color}">📋 ${escapeHTML(article.summary_ja)}</div>` : ''}
+            </div>
           </div>
-        </div>
-      </div>
-    `;
+          <div class="article-actions">
+            ${!isJa ? `<button class="action-btn translate-btn" onclick="event.stopPropagation();translateArticleTitle(${idx})">翻訳</button>` : ''}
+            <button class="action-btn" onclick="event.stopPropagation();toggleArticle('${articleId}',${idx})">詳細</button>
+          </div>
+          <div class="article-detail ${isExpanded?'open':''}" id="detail-${articleId}"><div class="article-detail-inner" id="detail-inner-${articleId}">${isExpanded?getDetailHTML(article,idx):''}</div></div>
+        </div>`;
+    } else {
+      return `
+        <div class="article-card card-small" id="card-${articleId}" onclick="toggleArticle('${articleId}',${idx})">
+          <div style="display:flex;align-items:center;gap:8px">
+            ${imgUrl ? `<img class="card-mini-thumb" src="${imgUrl}" onerror="this.style.display='none'" alt="">` : ''}
+            <div style="flex:1;min-width:0">
+              <span class="source-badge" style="background:${color};font-size:0.55rem;padding:1px 5px">${escapeHTML(article.source)}</span>
+              <span style="font-size:0.7rem;color:var(--text-dim)">${formatDate(article.dateObj)}</span>
+              ${article.summary_ja ? `<div style="font-size:0.78rem;color:var(--text);margin-top:2px">${escapeHTML(article.summary_ja)}</div>` : `<div style="font-size:0.78rem;color:var(--text);margin-top:2px">${escapeHTML(article.title)}</div>`}
+            </div>
+          </div>
+          <div class="article-detail ${isExpanded?'open':''}" id="detail-${articleId}"><div class="article-detail-inner" id="detail-inner-${articleId}">${isExpanded?getDetailHTML(article,idx):''}</div></div>
+        </div>`;
+    }
   }).join('');
 }
 

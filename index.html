@@ -804,12 +804,76 @@ async function loadFeeds(category) {
   if (errorFeeds.length > 0) {
     status.textContent = `${successCount} フィード取得済み / ${errorFeeds.join(', ')} 取得失敗`;
   } else {
-    status.textContent = `${allArticles.length} 件の記事 (${successCount} フィード)`;
+    status.textContent = `${allArticles.length} 件の記事 — ブリーフィング生成中...`;
   }
 
   renderArticles(category);
   btn.classList.remove('spinning');
   isLoading = false;
+
+  // Auto-briefing: sort by importance + translate + summarize
+  if (allArticles.length > 0 && getApiKey()) {
+    generateBriefing(category, allArticles);
+  } else if (!getApiKey()) {
+    status.textContent = `${allArticles.length} 件の記事 (APIキー未設定: ブリーフィングなし)`;
+  }
+}
+
+// ─── AI Briefing ─────────────────────────────────────────────────
+let briefingCache = {};
+
+async function generateBriefing(category, articles) {
+  if (briefingCache[category]) {
+    applyBriefing(category, briefingCache[category]);
+    return;
+  }
+
+  const status = document.getElementById('feedStatus');
+  const summaries = articles.slice(0, 15).map((a, i) =>
+    `[${i}] ${a.source} | ${a.title} | ${a.description?.slice(0, 150) || ''}`
+  ).join('\n');
+
+  const lang = articles[0]?.lang || 'en';
+  const prompt = `以下は${lang === 'ja' ? '日本語' : lang === 'fr' ? 'フランス語' : '英語'}のニュース記事一覧です。
+
+${summaries}
+
+以下のJSON形式で返してください（コードブロック不要、JSONのみ）:
+[
+  {"idx": 記事番号, "importance": 1-10の重要度, "summary_ja": "日本語で1-2行の要約"}
+]
+
+重要度の基準: 国際的影響度、緊急性、多くの人に関係するかで判断。
+全記事を重要度の高い順に並べてください。`;
+
+  try {
+    const result = await callClaude(prompt);
+    const cleaned = result.replace(/```json?\s*/g, '').replace(/```/g, '').trim();
+    const briefing = JSON.parse(cleaned);
+    briefingCache[category] = briefing;
+    applyBriefing(category, briefing);
+    status.textContent = `${articles.length} 件 — 重要度順で表示中`;
+  } catch (e) {
+    console.error('Briefing error:', e);
+    status.textContent = `${articles.length} 件の記事 (ブリーフィング生成失敗)`;
+  }
+}
+
+function applyBriefing(category, briefing) {
+  const articles = articlesCache[category];
+  if (!articles) return;
+
+  // Apply importance scores and summaries
+  briefing.forEach(b => {
+    if (articles[b.idx]) {
+      articles[b.idx].importance = b.importance;
+      articles[b.idx].summary_ja = b.summary_ja;
+    }
+  });
+
+  // Sort by importance (highest first)
+  articles.sort((a, b) => (b.importance || 0) - (a.importance || 0));
+  renderArticles(category);
 }
 
 // ─── RSS Parsing ─────────────────────────────────────────────────
@@ -919,6 +983,8 @@ function renderArticles(category) {
             <span>${formatDate(article.dateObj)}</span>
           </div>
           <div class="article-title">${escapeHTML(article.title)}</div>
+          ${article.summary_ja ? `<div class="article-summary-ja" style="font-size:0.85rem;color:#e0e0f0;line-height:1.5;margin:6px 0;padding:8px;background:rgba(108,92,231,0.1);border-radius:8px;border-left:3px solid ${color}">📋 ${escapeHTML(article.summary_ja)}</div>` : ''}
+          ${article.importance ? `<span style="display:inline-block;font-size:0.65rem;font-weight:700;padding:2px 6px;border-radius:4px;background:${article.importance >= 7 ? '#e74c5e' : article.importance >= 4 ? '#fbbf24' : '#43b581'};color:#000;margin-bottom:4px">重要度 ${article.importance}/10</span>` : ''}
           <div class="article-desc">${escapeHTML(article.description)}</div>
         </div>
         <div class="article-actions">

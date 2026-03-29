@@ -240,7 +240,7 @@
   .explain-box .explain-label { font-size:0.7rem; font-weight:700; color:#9b6dff; margin-bottom:6px; }
 
   /* Q&A */
-  .popup-qa { border-top:1px solid var(--border); padding:12px 20px 20px; position:sticky; bottom:0; background:var(--surface); }
+  .popup-qa { border-top:1px solid var(--border); padding:12px 20px calc(20px + env(safe-area-inset-bottom,0px)); background:var(--surface); }
   .qa-history { max-height:200px; overflow-y:auto; margin-bottom:8px; }
   .qa-msg { margin-bottom:8px; font-size:0.85rem; line-height:1.5; }
   .qa-msg.user { text-align:right; }
@@ -1233,6 +1233,18 @@ function escapeHTML(str) {
   return div.innerHTML;
 }
 
+function mdToHTML(text) {
+  if (!text) return '';
+  return escapeHTML(text)
+    .replace(/^### (.+)$/gm, '<h4 style="color:var(--text);margin:12px 0 4px;font-size:0.9rem">$1</h4>')
+    .replace(/^## (.+)$/gm, '<h3 style="color:#9b6dff;margin:14px 0 6px;font-size:0.95rem;border-bottom:1px solid var(--border);padding-bottom:4px">$1</h3>')
+    .replace(/^# (.+)$/gm, '<h3 style="color:#9b6dff;margin:14px 0 6px;font-size:1rem">$1</h3>')
+    .replace(/\*\*(.+?)\*\*/g, '<strong style="color:var(--text)">$1</strong>')
+    .replace(/^- (.+)$/gm, '<div style="padding-left:12px">• $1</div>')
+    .replace(/\n\n/g, '<br><br>')
+    .replace(/\n/g, '<br>');
+}
+
 // ─── Article Popup ───────────────────────────────────────────────
 let currentPopupIdx = null;
 
@@ -1289,11 +1301,11 @@ function updatePopupBody(article, idx) {
   }
 
   if (summaryCache[url]) {
-    html += `<div style="background:rgba(251,191,36,0.1);border-radius:8px;padding:10px;margin-bottom:12px;font-size:0.88rem"><span class="section-label" style="background:#fbbf24;color:#000">要約</span><br>${escapeHTML(summaryCache[url])}</div>`;
+    html += `<div style="background:rgba(251,191,36,0.1);border-radius:8px;padding:10px;margin-bottom:12px;font-size:0.88rem"><span class="section-label" style="background:#fbbf24;color:#000">要約</span><br>${mdToHTML(summaryCache[url])}</div>`;
   }
 
   if (explainCache[url]) {
-    html += `<div class="explain-box"><div class="explain-label">🔍 解説</div>${escapeHTML(explainCache[url])}</div>`;
+    html += `<div class="explain-box"><div class="explain-label">🔍 解説</div>${mdToHTML(explainCache[url])}</div>`;
   }
 
   const contentTransKey = 'content-' + url;
@@ -1386,7 +1398,7 @@ function renderQA() {
   const container = document.getElementById('qaHistory');
   container.innerHTML = qaMessages.map(m => `
     <div class="qa-msg ${m.role}">
-      <div class="qa-bubble">${escapeHTML(m.text)}</div>
+      <div class="qa-bubble">${m.role==='assistant' ? mdToHTML(m.text) : escapeHTML(m.text)}</div>
     </div>
   `).join('');
   container.scrollTop = container.scrollHeight;

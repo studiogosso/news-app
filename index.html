@@ -163,27 +163,46 @@
   }
   .article-card:hover { background: var(--bg-card-hover); }
 
-  /* Large card (importance 7+) */
-  .card-large { border-width: 2px; }
-  .card-hero { height: 200px; background-size: cover; background-position: center; position: relative; }
-  .card-hero-overlay { position: absolute; inset: 0; background: linear-gradient(to top, rgba(0,0,0,0.85) 0%, transparent 50%); display: flex; flex-direction: column; justify-content: flex-end; padding: 16px; }
-  .card-hero-notimg { padding: 20px 16px; background: linear-gradient(135deg, #1a1d27 0%, #2e3347 100%); }
-  .card-hero-title { font-size: 1.2rem; font-weight: 800; color: #fff; line-height: 1.4; }
-  .card-body { padding: 12px 16px; }
-  .imp-badge { font-size: 0.6rem; font-weight: 800; padding: 3px 8px; border-radius: 4px; display: inline-block; margin-bottom: 6px; }
-  .imp-high { background: #e74c5e; color: #fff; }
-  .imp-mid { background: #fbbf24; color: #000; font-size: 0.55rem; padding: 2px 6px; margin-left: 6px; }
-  .summary-ja { font-size: 0.85rem; color: #e0e0f0; line-height: 1.5; margin: 6px 0; padding: 8px; background: rgba(108,92,231,0.1); border-radius: 8px; border-left: 3px solid; }
+  /* === NEWSPAPER LAYOUT === */
+  .np-date-header { text-align:center; padding:12px 0 8px; border-bottom:2px solid var(--border); margin-bottom:12px; font-size:0.75rem; color:var(--text-dim); letter-spacing:2px; text-transform:uppercase; }
+  .np-section { margin-bottom:16px; }
 
-  /* Medium card (importance 4-6) */
-  .card-medium .article-title { font-size: 0.95rem; margin-top: 4px; }
-  .card-medium { padding: 12px 14px; }
-  .card-thumb { width: 90px; height: 70px; object-fit: cover; border-radius: 8px; flex-shrink: 0; }
+  /* Top story */
+  .np-top { margin-bottom:16px; }
+  .np-top .card-hero { height:220px; background-size:cover; background-position:center; position:relative; border-radius:var(--radius); overflow:hidden; }
+  .np-top .card-hero-overlay { position:absolute; inset:0; background:linear-gradient(to top,rgba(0,0,0,0.9) 0%,transparent 40%); display:flex; flex-direction:column; justify-content:flex-end; padding:16px; }
+  .np-top .headline { font-size:1.3rem; font-weight:900; color:#fff; line-height:1.35; margin-bottom:6px; }
+  .np-top .summary-ja { font-size:0.88rem; color:#ddd; line-height:1.5; margin:6px 0; }
+  .np-top .np-meta { font-size:0.7rem; color:#999; display:flex; gap:8px; align-items:center; margin-top:4px; }
+  .np-top-noimg { padding:20px 16px; background:linear-gradient(135deg,#1a1d27,#2e3347); border-radius:var(--radius); }
+  .imp-badge { font-size:0.55rem; font-weight:800; padding:2px 7px; border-radius:3px; }
+  .imp-high { background:#e74c5e; color:#fff; }
+  .imp-mid { background:#fbbf24; color:#000; }
+  .imp-low { background:#43b581; color:#000; }
 
-  /* Small card (importance 1-3) */
-  .card-small { padding: 10px 12px; cursor: pointer; margin-bottom: 4px; }
-  .card-small:hover { background: var(--bg-card-hover); }
-  .card-mini-thumb { width: 40px; height: 40px; object-fit: cover; border-radius: 6px; flex-shrink: 0; }
+  /* Mid columns */
+  .np-mid-grid { display:grid; grid-template-columns:1fr 1fr; gap:10px; margin-bottom:12px; }
+  @media(max-width:500px){ .np-mid-grid { grid-template-columns:1fr; } }
+  .np-mid-card { background:var(--bg-card); border:1px solid var(--border); border-radius:var(--radius); overflow:hidden; }
+  .np-mid-card .mid-img { width:100%; height:110px; object-fit:cover; display:block; }
+  .np-mid-card .mid-body { padding:10px 12px; }
+  .np-mid-card .mid-title { font-size:0.88rem; font-weight:700; color:var(--text); line-height:1.35; margin-bottom:4px; }
+  .np-mid-card .mid-summary { font-size:0.78rem; color:var(--text-dim); line-height:1.4; }
+  .np-mid-card .np-meta { font-size:0.65rem; color:#666; margin-top:6px; display:flex; gap:6px; align-items:center; }
+
+  /* Bottom briefs */
+  .np-brief { padding:8px 0; border-bottom:1px solid var(--border); display:flex; gap:8px; align-items:flex-start; cursor:pointer; }
+  .np-brief:hover { background:rgba(255,255,255,0.02); }
+  .np-brief .brief-dot { width:6px; height:6px; border-radius:50%; flex-shrink:0; margin-top:6px; }
+  .np-brief .brief-title { font-size:0.8rem; color:var(--text); line-height:1.35; flex:1; }
+  .np-brief .brief-meta { font-size:0.6rem; color:#666; white-space:nowrap; }
+  .np-brief-img { width:36px; height:36px; object-fit:cover; border-radius:4px; flex-shrink:0; }
+
+  .summary-ja { font-size:0.82rem; color:#e0e0f0; line-height:1.5; }
+
+  /* Action buttons in newspaper */
+  .np-actions { display:flex; gap:6px; margin-top:8px; padding-top:6px; border-top:1px solid var(--border); }
+  .np-actions .action-btn { font-size:0.7rem; padding:4px 10px; }
 
   .article-header {
     padding: 14px 16px;
@@ -1007,64 +1026,90 @@ function renderArticles(category) {
     return;
   }
 
-  list.innerHTML = articles.map((article, idx) => {
-    const isJa = article.lang === 'ja';
-    const articleId = `article-${category}-${idx}`;
-    const isExpanded = expandedArticle === articleId;
-    const imp = article.importance || 0;
-    const size = imp >= 7 ? 'large' : imp >= 4 ? 'medium' : 'small';
-    const imgUrl = article.image || '';
+  // Split articles by importance tier
+  const top = articles.filter(a => (a.importance||0) >= 7);
+  const mid = articles.filter(a => (a.importance||0) >= 4 && (a.importance||0) < 7);
+  const low = articles.filter(a => (a.importance||0) < 4);
+  // If no importance yet, show all as mid
+  const noAI = articles.every(a => !a.importance);
 
-    if (size === 'large') {
-      return `
-        <div class="article-card card-large" id="card-${articleId}">
-          ${imgUrl ? `<div class="card-hero" style="background-image:url('${imgUrl}')"><div class="card-hero-overlay">
-            <span class="imp-badge imp-high">重要度 ${imp}/10</span>
-            <div class="card-hero-title">${escapeHTML(article.title)}</div>
-          </div></div>` : `<div class="card-hero-notimg"><span class="imp-badge imp-high">重要度 ${imp}/10</span><div class="card-hero-title">${escapeHTML(article.title)}</div></div>`}
-          <div class="card-body">
-            <div class="article-source"><span class="source-badge" style="background:${color}">${escapeHTML(article.source)}</span><span>${formatDate(article.dateObj)}</span></div>
-            ${article.summary_ja ? `<div class="summary-ja" style="border-color:${color}">📋 ${escapeHTML(article.summary_ja)}</div>` : ''}
-            <div class="article-desc">${escapeHTML(article.description)}</div>
-            <div class="article-actions">
-              ${!isJa ? `<button class="action-btn translate-btn" onclick="event.stopPropagation();translateArticleTitle(${idx})">翻訳</button>` : ''}
-              <button class="action-btn" onclick="event.stopPropagation();toggleArticle('${articleId}',${idx})">詳細</button>
-            </div>
+  const today = new Date().toLocaleDateString('ja-JP',{year:'numeric',month:'long',day:'numeric',weekday:'long'});
+  let html = `<div class="np-date-header">${today}</div>`;
+
+  // === TOP STORY ===
+  if (top.length > 0) {
+    const a = top[0]; const idx = articles.indexOf(a);
+    const articleId = `article-${category}-${idx}`;
+    const isJa = a.lang==='ja';
+    html += `<div class="np-top" id="card-${articleId}">
+      ${a.image ? `<div class="card-hero" style="background-image:url('${a.image}')" onclick="toggleArticle('${articleId}',${idx})"><div class="card-hero-overlay">
+        <span class="imp-badge imp-high">TOP</span>
+        <div class="headline">${escapeHTML(a.title)}</div>
+        ${a.summary_ja ? `<div class="summary-ja">${escapeHTML(a.summary_ja)}</div>` : ''}
+        <div class="np-meta"><span class="source-badge" style="background:${color}">${escapeHTML(a.source)}</span><span>${formatDate(a.dateObj)}</span></div>
+      </div></div>` : `<div class="np-top-noimg" onclick="toggleArticle('${articleId}',${idx})">
+        <span class="imp-badge imp-high">TOP</span>
+        <div class="headline">${escapeHTML(a.title)}</div>
+        ${a.summary_ja ? `<div class="summary-ja">${escapeHTML(a.summary_ja)}</div>` : `<div class="summary-ja">${escapeHTML(a.description)}</div>`}
+        <div class="np-meta"><span class="source-badge" style="background:${color}">${escapeHTML(a.source)}</span><span>${formatDate(a.dateObj)}</span></div>
+      </div>`}
+      <div class="np-actions" style="padding:0 12px 8px">
+        ${!isJa?`<button class="action-btn translate-btn" onclick="translateArticleTitle(${idx})">翻訳</button>`:''}
+        <button class="action-btn" onclick="toggleArticle('${articleId}',${idx})">詳細</button>
+      </div>
+      <div class="article-detail" id="detail-${articleId}"><div class="article-detail-inner" id="detail-inner-${articleId}"></div></div>
+    </div>`;
+    // Additional top stories as mid
+    if (top.length > 1) mid.unshift(...top.slice(1));
+  }
+
+  // === MID STORIES (2-column grid) ===
+  const midList = noAI ? articles : mid;
+  if (midList.length > 0) {
+    html += `<div class="np-mid-grid">`;
+    midList.forEach(a => {
+      const idx = articles.indexOf(a);
+      const articleId = `article-${category}-${idx}`;
+      const isJa = a.lang==='ja';
+      html += `<div class="np-mid-card" id="card-${articleId}">
+        ${a.image ? `<img class="mid-img" src="${a.image}" onerror="this.style.display='none'" alt="" onclick="toggleArticle('${articleId}',${idx})">` : ''}
+        <div class="mid-body" onclick="toggleArticle('${articleId}',${idx})">
+          <div class="mid-title">${escapeHTML(a.title)}</div>
+          ${a.summary_ja ? `<div class="mid-summary">${escapeHTML(a.summary_ja)}</div>` : `<div class="mid-summary">${escapeHTML(a.description?.slice(0,100)||'')}</div>`}
+          <div class="np-meta">
+            <span class="source-badge" style="background:${color};font-size:0.55rem;padding:1px 5px">${escapeHTML(a.source)}</span>
+            <span>${formatDate(a.dateObj)}</span>
+            ${a.importance?`<span class="imp-badge imp-mid">${a.importance}</span>`:''}
           </div>
-          <div class="article-detail ${isExpanded?'open':''}" id="detail-${articleId}"><div class="article-detail-inner" id="detail-inner-${articleId}">${isExpanded?getDetailHTML(article,idx):''}</div></div>
-        </div>`;
-    } else if (size === 'medium') {
-      return `
-        <div class="article-card card-medium" id="card-${articleId}">
-          <div style="display:flex;gap:12px">
-            ${imgUrl ? `<img class="card-thumb" src="${imgUrl}" onerror="this.style.display='none'" alt="">` : ''}
-            <div style="flex:1;min-width:0">
-              <div class="article-source"><span class="source-badge" style="background:${color}">${escapeHTML(article.source)}</span><span>${formatDate(article.dateObj)}</span><span class="imp-badge imp-mid">重要度 ${imp}</span></div>
-              <div class="article-title">${escapeHTML(article.title)}</div>
-              ${article.summary_ja ? `<div class="summary-ja" style="border-color:${color}">📋 ${escapeHTML(article.summary_ja)}</div>` : ''}
-            </div>
-          </div>
-          <div class="article-actions">
-            ${!isJa ? `<button class="action-btn translate-btn" onclick="event.stopPropagation();translateArticleTitle(${idx})">翻訳</button>` : ''}
-            <button class="action-btn" onclick="event.stopPropagation();toggleArticle('${articleId}',${idx})">詳細</button>
-          </div>
-          <div class="article-detail ${isExpanded?'open':''}" id="detail-${articleId}"><div class="article-detail-inner" id="detail-inner-${articleId}">${isExpanded?getDetailHTML(article,idx):''}</div></div>
-        </div>`;
-    } else {
-      return `
-        <div class="article-card card-small" id="card-${articleId}" onclick="toggleArticle('${articleId}',${idx})">
-          <div style="display:flex;align-items:center;gap:8px">
-            ${imgUrl ? `<img class="card-mini-thumb" src="${imgUrl}" onerror="this.style.display='none'" alt="">` : ''}
-            <div style="flex:1;min-width:0">
-              <span class="source-badge" style="background:${color};font-size:0.55rem;padding:1px 5px">${escapeHTML(article.source)}</span>
-              <span style="font-size:0.7rem;color:var(--text-dim)">${formatDate(article.dateObj)}</span>
-              ${article.summary_ja ? `<div style="font-size:0.78rem;color:var(--text);margin-top:2px">${escapeHTML(article.summary_ja)}</div>` : `<div style="font-size:0.78rem;color:var(--text);margin-top:2px">${escapeHTML(article.title)}</div>`}
-            </div>
-          </div>
-          <div class="article-detail ${isExpanded?'open':''}" id="detail-${articleId}"><div class="article-detail-inner" id="detail-inner-${articleId}">${isExpanded?getDetailHTML(article,idx):''}</div></div>
-        </div>`;
-    }
-  }).join('');
+        </div>
+        <div class="np-actions" style="padding:4px 10px 8px">
+          ${!isJa?`<button class="action-btn translate-btn" onclick="translateArticleTitle(${idx})">翻訳</button>`:''}
+          <button class="action-btn" onclick="toggleArticle('${articleId}',${idx})">詳細</button>
+        </div>
+        <div class="article-detail" id="detail-${articleId}"><div class="article-detail-inner" id="detail-inner-${articleId}"></div></div>
+      </div>`;
+    });
+    html += `</div>`;
+  }
+
+  // === BOTTOM BRIEFS ===
+  if (low.length > 0 && !noAI) {
+    html += `<div class="np-section"><div style="font-size:0.7rem;color:var(--text-dim);padding:6px 0;border-bottom:1px solid var(--border);margin-bottom:4px;letter-spacing:1px">その他のニュース</div>`;
+    low.forEach(a => {
+      const idx = articles.indexOf(a);
+      const articleId = `article-${category}-${idx}`;
+      html += `<div class="np-brief" id="card-${articleId}" onclick="toggleArticle('${articleId}',${idx})">
+        <div class="brief-dot" style="background:${color}"></div>
+        ${a.image ? `<img class="np-brief-img" src="${a.image}" onerror="this.style.display='none'" alt="">` : ''}
+        <div class="brief-title">${a.summary_ja ? escapeHTML(a.summary_ja) : escapeHTML(a.title)}</div>
+        <div class="brief-meta">${escapeHTML(a.source)}<br>${formatDate(a.dateObj)}</div>
+      </div>
+      <div class="article-detail" id="detail-${articleId}"><div class="article-detail-inner" id="detail-inner-${articleId}"></div></div>`;
+    });
+    html += `</div>`;
+  }
+
+  list.innerHTML = html;
 }
 
 function getDetailHTML(article, idx) {

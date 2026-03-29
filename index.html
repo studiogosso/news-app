@@ -207,6 +207,25 @@
   .np-actions { display:flex; gap:6px; margin-top:8px; padding-top:6px; border-top:1px solid var(--border); }
   .np-actions .action-btn { font-size:0.7rem; padding:4px 10px; }
 
+  /* === POPUP MODAL === */
+  .popup-overlay { position:fixed; inset:0; z-index:200; background:rgba(0,0,0,0.8); display:none; align-items:flex-end; justify-content:center; backdrop-filter:blur(4px); }
+  .popup-overlay.open { display:flex; animation:fadeIn 0.2s; }
+  @keyframes fadeIn { from{opacity:0}to{opacity:1} }
+  .popup-modal { background:var(--surface); border-radius:16px 16px 0 0; width:100%; max-width:800px; max-height:85vh; overflow-y:auto; animation:slideUp 0.3s ease; }
+  @keyframes slideUp { from{transform:translateY(100%)}to{transform:none} }
+  @media(min-width:700px){ .popup-modal { border-radius:16px; max-height:80vh; margin-bottom:40px; } .popup-overlay { align-items:center; } }
+  .popup-header { display:flex; align-items:flex-start; gap:12px; padding:20px 20px 12px; position:sticky; top:0; background:var(--surface); z-index:1; border-bottom:1px solid var(--border); }
+  .popup-title { flex:1; font-size:1.1rem; font-weight:800; color:var(--text); line-height:1.4; }
+  .popup-close { width:32px; height:32px; border-radius:50%; background:var(--surface2); border:none; color:var(--text-dim); font-size:1rem; cursor:pointer; flex-shrink:0; display:flex; align-items:center; justify-content:center; }
+  .popup-close:hover { background:var(--border); }
+  .popup-meta { padding:8px 20px; font-size:0.75rem; color:var(--text-dim); display:flex; gap:8px; align-items:center; flex-wrap:wrap; }
+  .popup-actions { padding:8px 20px; display:flex; gap:6px; flex-wrap:wrap; border-bottom:1px solid var(--border); }
+  .popup-body { padding:16px 20px 32px; font-size:0.9rem; line-height:1.7; color:var(--text); }
+  .popup-body .section-label { font-size:0.75rem; font-weight:700; margin:16px 0 6px; padding:4px 10px; border-radius:4px; display:inline-block; }
+  .popup-body .section-content { margin-bottom:12px; white-space:pre-wrap; }
+  .explain-box { background:rgba(155,109,255,0.1); border:1px solid rgba(155,109,255,0.2); border-radius:10px; padding:14px; margin:12px 0; line-height:1.7; }
+  .explain-box .explain-label { font-size:0.7rem; font-weight:700; color:#9b6dff; margin-bottom:6px; }
+
   .article-header {
     padding: 14px 16px;
     cursor: pointer;
@@ -630,6 +649,19 @@
   <div class="feed-status" id="feedStatus"></div>
   <div id="articleList"></div>
 </main>
+
+<!-- Article Popup Modal -->
+<div class="popup-overlay" id="popupOverlay" onclick="if(event.target===this)closePopup()">
+  <div class="popup-modal" id="popupModal">
+    <div class="popup-header">
+      <div class="popup-title" id="popupTitle"></div>
+      <button class="popup-close" onclick="closePopup()">&#10005;</button>
+    </div>
+    <div class="popup-meta" id="popupMeta"></div>
+    <div class="popup-actions" id="popupActions"></div>
+    <div class="popup-body" id="popupBody"></div>
+  </div>
+</div>
 
 <!-- Bottom tabs -->
 <nav class="tabs">
@@ -1132,6 +1164,7 @@ function getDetailHTML(article, idx) {
     html += `<button class="action-btn translate-btn" onclick="event.stopPropagation(); translateContent(${idx})">コンテンツ翻訳</button>`;
   }
   html += `<button class="action-btn summary-btn" onclick="event.stopPropagation(); summarizeArticle(${idx})">要約</button>`;
+  html += `<button class="action-btn" style="background:rgba(155,109,255,0.15);color:#9b6dff" onclick="event.stopPropagation(); explainArticle(${idx})">解説</button>`;
   html += `<a class="detail-link" href="${escapeHTML(url)}" target="_blank" rel="noopener" onclick="event.stopPropagation();">元の記事 &#8599;</a>`;
   html += '</div>';
 
@@ -1161,45 +1194,114 @@ function escapeHTML(str) {
   return div.innerHTML;
 }
 
-// ─── Article Expand/Collapse ─────────────────────────────────────
+// ─── Article Popup ───────────────────────────────────────────────
+let currentPopupIdx = null;
+
 async function toggleArticle(articleId, idx) {
-  const detail = document.getElementById(`detail-${articleId}`);
-  const inner = document.getElementById(`detail-inner-${articleId}`);
-
-  if (expandedArticle === articleId) {
-    // Collapse
-    detail.classList.remove('open');
-    expandedArticle = null;
-    setTimeout(() => { inner.innerHTML = ''; }, 300);
-    return;
-  }
-
-  // Collapse previously expanded
-  if (expandedArticle) {
-    const prevDetail = document.getElementById(`detail-${expandedArticle}`);
-    const prevInner = document.getElementById(`detail-inner-${expandedArticle}`);
-    if (prevDetail) prevDetail.classList.remove('open');
-    if (prevInner) setTimeout(() => { prevInner.innerHTML = ''; }, 300);
-  }
-
-  expandedArticle = articleId;
   const articles = articlesCache[currentCategory];
   const article = articles[idx];
+  if (!article) return;
+  currentPopupIdx = idx;
+  const color = CATEGORY_COLORS[currentCategory];
+  const isJa = article.lang === 'ja';
 
-  inner.innerHTML = getDetailHTML(article, idx);
-  // Force reflow then open
-  detail.offsetHeight;
-  detail.classList.add('open');
+  document.getElementById('popupTitle').textContent = article.title;
+  document.getElementById('popupMeta').innerHTML = `
+    <span class="source-badge" style="background:${color}">${escapeHTML(article.source)}</span>
+    <span>${formatDate(article.dateObj)}</span>
+    ${article.importance ? `<span class="imp-badge ${article.importance>=7?'imp-high':article.importance>=4?'imp-mid':'imp-low'}">重要度 ${article.importance}</span>` : ''}
+  `;
 
-  // Scroll card into view
-  const card = document.getElementById(`card-${articleId}`);
-  setTimeout(() => {
-    card.scrollIntoView({ behavior: 'smooth', block: 'start' });
-  }, 100);
+  document.getElementById('popupActions').innerHTML = `
+    ${!isJa ? `<button class="action-btn translate-btn" onclick="translateArticleTitle(${idx})">翻訳</button>` : ''}
+    ${!isJa ? `<button class="action-btn translate-btn" onclick="translateContent(${idx})">全文翻訳</button>` : ''}
+    <button class="action-btn summary-btn" onclick="summarizeArticle(${idx})">要約</button>
+    <button class="action-btn" style="background:rgba(155,109,255,0.15);color:#9b6dff" onclick="explainArticle(${idx})">解説</button>
+    <a class="action-btn" href="${escapeHTML(article.link)}" target="_blank" rel="noopener" style="text-decoration:none">元の記事 &#8599;</a>
+  `;
 
-  // Fetch content if not cached
+  updatePopupBody(article, idx);
+  document.getElementById('popupOverlay').classList.add('open');
+  document.body.style.overflow = 'hidden';
+
   if (!contentCache[article.link]) {
     await fetchArticleContent(article.link, idx);
+    if (currentPopupIdx === idx) updatePopupBody(article, idx);
+  }
+}
+
+function updatePopupBody(article, idx) {
+  const url = article.link;
+  const isJa = article.lang === 'ja';
+  let html = '';
+
+  if (article.summary_ja) {
+    html += `<div style="background:rgba(108,92,231,0.1);border-radius:8px;padding:12px;margin-bottom:12px;font-size:0.88rem">📋 ${escapeHTML(article.summary_ja)}</div>`;
+  }
+
+  const titleTransKey = 'title-' + url;
+  if (translationCache[titleTransKey]) {
+    html += `<div style="background:rgba(74,144,217,0.1);border-radius:8px;padding:10px;margin-bottom:12px;font-size:0.88rem"><span class="section-label" style="background:#4a90d9;color:#fff">タイトル翻訳</span><br>${escapeHTML(translationCache[titleTransKey])}</div>`;
+  }
+
+  if (summaryCache[url]) {
+    html += `<div style="background:rgba(251,191,36,0.1);border-radius:8px;padding:10px;margin-bottom:12px;font-size:0.88rem"><span class="section-label" style="background:#fbbf24;color:#000">要約</span><br>${escapeHTML(summaryCache[url])}</div>`;
+  }
+
+  if (explainCache[url]) {
+    html += `<div class="explain-box"><div class="explain-label">🔍 解説</div>${escapeHTML(explainCache[url])}</div>`;
+  }
+
+  const contentTransKey = 'content-' + url;
+  if (translationCache[contentTransKey]) {
+    html += `<div style="background:rgba(74,144,217,0.08);border-radius:8px;padding:12px;margin-bottom:12px"><span class="section-label" style="background:#4a90d9;color:#fff">全文翻訳</span><div style="margin-top:8px;white-space:pre-wrap">${escapeHTML(translationCache[contentTransKey])}</div></div>`;
+  }
+
+  if (contentCache[url]) {
+    html += `<div style="border-top:1px solid var(--border);padding-top:12px;margin-top:8px;white-space:pre-wrap;color:var(--text-dim);font-size:0.85rem">${escapeHTML(contentCache[url])}</div>`;
+  } else {
+    html += `<div style="text-align:center;padding:20px"><div class="spinner"></div> コンテンツを読み込み中...</div>`;
+  }
+
+  document.getElementById('popupBody').innerHTML = html;
+}
+
+function closePopup() {
+  document.getElementById('popupOverlay').classList.remove('open');
+  document.body.style.overflow = '';
+  currentPopupIdx = null;
+}
+
+// Close with Escape
+document.addEventListener('keydown', e => { if (e.key === 'Escape') closePopup(); });
+
+// ─── Explain Article ─────────────────────────────────────────────
+let explainCache = {};
+
+async function explainArticle(idx) {
+  const articles = articlesCache[currentCategory];
+  const article = articles[idx];
+  if (!article || !getApiKey()) { showToast('APIキーを設定してください',true); return; }
+  if (explainCache[article.link]) { updatePopupBody(article, idx); return; }
+
+  showToast('解説を生成中...');
+  const content = contentCache[article.link] || article.description || '';
+  const prompt = `以下のニュース記事について、日本語で分かりやすく解説してください。
+- 背景・経緯を簡潔に説明
+- なぜこれが重要なのか
+- 今後の影響や見通し
+各項目2-3文で簡潔に。
+
+タイトル: ${article.title}
+内容: ${content.slice(0, 3000)}`;
+
+  try {
+    const result = await callClaude(prompt);
+    explainCache[article.link] = result;
+    if (currentPopupIdx === idx) updatePopupBody(article, idx);
+    showToast('解説を生成しました');
+  } catch(e) {
+    showToast('解説の生成に失敗しました', true);
   }
 }
 
@@ -1265,12 +1367,9 @@ async function fetchArticleContent(url, idx) {
 }
 
 function refreshExpandedDetail(idx) {
-  const articleId = `article-${currentCategory}-${idx}`;
-  if (expandedArticle !== articleId) return;
-  const inner = document.getElementById(`detail-inner-${articleId}`);
-  const articles = articlesCache[currentCategory];
-  if (inner && articles[idx]) {
-    inner.innerHTML = getDetailHTML(articles[idx], idx);
+  if (currentPopupIdx === idx) {
+    const articles = articlesCache[currentCategory];
+    if (articles[idx]) updatePopupBody(articles[idx], idx);
   }
 }
 

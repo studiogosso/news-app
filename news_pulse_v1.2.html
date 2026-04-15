@@ -1,0 +1,1964 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+<title>News Hub</title>
+<style>
+  :root {
+    --bg: #0f1117;
+    --bg-card: #1a1d27;
+    --bg-card-hover: #222638;
+    --bg-surface: #151821;
+    --text: #e4e6eb;
+    --text-dim: #8b8fa3;
+    --text-muted: #5c6074;
+    --border: #2a2d3a;
+    --japan: #e74c5e;
+    --france: #4a90d9;
+    --world: #43b581;
+    --tech: #9b6dff;
+    --accent: var(--japan);
+    --radius: 12px;
+    --radius-sm: 8px;
+    --transition: 0.25s cubic-bezier(0.4, 0, 0.2, 1);
+  }
+
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+
+  body {
+    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Hiragino Sans', 'Noto Sans JP', sans-serif;
+    background: var(--bg);
+    color: var(--text);
+    min-height: 100vh;
+    overflow-x: hidden;
+    -webkit-font-smoothing: antialiased;
+  }
+
+  /* Header */
+  .header {
+    position: sticky;
+    top: 0;
+    z-index: 100;
+    background: var(--bg-surface);
+    border-bottom: 1px solid var(--border);
+    padding: 12px 16px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    backdrop-filter: blur(12px);
+  }
+
+  .header-title {
+    font-size: 20px;
+    font-weight: 700;
+    letter-spacing: -0.5px;
+  }
+
+  .header-actions {
+    display: flex;
+    gap: 8px;
+    align-items: center;
+  }
+
+  .icon-btn {
+    background: none;
+    border: 1px solid var(--border);
+    color: var(--text-dim);
+    width: 36px;
+    height: 36px;
+    border-radius: var(--radius-sm);
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: var(--transition);
+    font-size: 16px;
+  }
+
+  .icon-btn:hover { background: var(--bg-card); color: var(--text); }
+  .icon-btn.spinning svg { animation: spin 1s linear infinite; }
+
+  @keyframes spin { to { transform: rotate(360deg); } }
+
+  /* Tabs */
+  .tabs {
+    position: fixed;
+    bottom: 0;
+    left: 0;
+    right: 0;
+    z-index: 100;
+    background: var(--bg-surface);
+    border-top: 1px solid var(--border);
+    display: flex;
+    padding: 6px 8px;
+    padding-bottom: max(6px, env(safe-area-inset-bottom));
+    backdrop-filter: blur(12px);
+  }
+
+  .tab {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 3px;
+    padding: 8px 4px;
+    background: none;
+    border: none;
+    color: var(--text-muted);
+    font-size: 11px;
+    font-weight: 600;
+    cursor: pointer;
+    transition: var(--transition);
+    border-radius: var(--radius-sm);
+    position: relative;
+  }
+
+  .tab .tab-dot {
+    width: 6px;
+    height: 6px;
+    border-radius: 50%;
+    transition: var(--transition);
+    opacity: 0.4;
+  }
+
+  .tab.active { color: var(--text); }
+  .tab.active .tab-dot { opacity: 1; transform: scale(1.3); }
+  .tab[data-cat="japan"] .tab-dot { background: var(--japan); }
+  .tab[data-cat="france"] .tab-dot { background: var(--france); }
+  .tab[data-cat="world"] .tab-dot { background: var(--world); }
+  .tab[data-cat="tech"] .tab-dot { background: var(--tech); }
+
+  /* Main content */
+  .main {
+    padding: 12px 12px 80px 12px;
+    max-width: 1200px;
+    margin: 0 auto;
+  }
+  @media(max-width:500px){ .main { padding: 8px 8px 80px 8px; } }
+
+  /* Category indicator bar */
+  .category-bar {
+    height: 3px;
+    border-radius: 2px;
+    margin: 0 4px 16px 4px;
+    transition: background var(--transition);
+  }
+
+  /* Feed info */
+  .feed-status {
+    text-align: center;
+    padding: 8px 0 16px 0;
+    font-size: 12px;
+    color: var(--text-muted);
+  }
+
+  /* Article Card */
+  .article-card {
+    background: var(--bg-card);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    margin-bottom: 10px;
+    overflow: hidden;
+    transition: var(--transition);
+  }
+  .article-card:hover { background: var(--bg-card-hover); }
+
+  /* === NEWSPAPER LAYOUT === */
+  .np-date-header { text-align:center; padding:12px 0 8px; border-bottom:2px solid var(--border); margin-bottom:12px; font-size:0.75rem; color:var(--text-dim); letter-spacing:2px; text-transform:uppercase; }
+  .np-section { margin-bottom:16px; }
+
+  /* Top story */
+  .np-top { margin-bottom:16px; }
+  .np-top .card-hero { height:220px; background-size:cover; background-position:center; position:relative; border-radius:var(--radius); overflow:hidden; }
+  .np-top .card-hero-overlay { position:absolute; inset:0; background:linear-gradient(to top,rgba(0,0,0,0.9) 0%,transparent 40%); display:flex; flex-direction:column; justify-content:flex-end; padding:16px; }
+  .np-top .headline { font-size:1.3rem; font-weight:900; color:#fff; line-height:1.35; margin-bottom:6px; }
+  .np-top .summary-ja { font-size:0.88rem; color:#ddd; line-height:1.5; margin:6px 0; }
+  .np-top .np-meta { font-size:0.7rem; color:#999; display:flex; gap:8px; align-items:center; margin-top:4px; }
+  .np-top-noimg { padding:20px 16px; background:linear-gradient(135deg,#1a1d27,#2e3347); border-radius:var(--radius); }
+  .imp-badge { font-size:0.55rem; font-weight:800; padding:2px 7px; border-radius:3px; }
+  .imp-high { background:#e74c5e; color:#fff; }
+  .imp-mid { background:#fbbf24; color:#000; }
+  .imp-low { background:#43b581; color:#000; }
+
+  /* Mid columns */
+  /* Masonry-style grid */
+  .np-masonry { column-count:2; column-gap:10px; margin-bottom:12px; }
+  .np-masonry .np-mid-card { break-inside:avoid; margin-bottom:10px; display:inline-block; width:100%; }
+  @media(min-width:700px){ .np-masonry { column-count:2; } }
+  @media(min-width:900px){ .np-masonry { column-count:3; } .np-top .card-hero { height:320px; } .headline { font-size:1.6rem!important; } }
+  @media(min-width:1200px){ .np-masonry { column-count:4; } .np-top .card-hero { height:400px; } }
+  @media(max-width:500px){ .np-masonry { column-count:1; } .np-top .card-hero { height:180px; } }
+
+  /* Card size variants */
+  .np-mid-card.card-tall .mid-img { height:200px; }
+  .np-mid-card.card-square .mid-img { height:160px; }
+  .np-mid-card.card-wide { }
+  .np-mid-card.card-compact .mid-img { height:80px; }
+  .np-mid-card.card-compact .mid-body { padding:8px 10px; }
+  .np-mid-card.card-compact .mid-title { font-size:0.8rem; }
+  .np-mid-card.card-text-only { border-left:3px solid; }
+  .np-mid-card.card-text-only .mid-body { padding:10px 12px; }
+  .np-mid-card { background:var(--bg-card); border:1px solid var(--border); border-radius:var(--radius); overflow:hidden; border-left: 4px solid transparent; }
+  .np-mid-card .mid-img { width:100%; height:110px; object-fit:cover; display:block; }
+  .np-mid-card .mid-body { padding:10px 12px; }
+  .np-mid-card .mid-title { font-size:0.88rem; font-weight:700; color:var(--text); line-height:1.35; margin-bottom:4px; }
+  .np-mid-card .mid-summary { font-size:0.78rem; color:var(--text-dim); line-height:1.4; }
+  .np-mid-card .np-meta { font-size:0.65rem; color:#666; margin-top:6px; display:flex; gap:6px; align-items:center; }
+
+  /* Bottom briefs */
+  .np-brief { padding:8px 0; border-bottom:1px solid var(--border); display:flex; gap:8px; align-items:flex-start; cursor:pointer; }
+  .np-brief:hover { background:rgba(255,255,255,0.02); }
+  .np-brief .brief-dot { width:6px; height:6px; border-radius:50%; flex-shrink:0; margin-top:6px; }
+  .np-brief .brief-title { font-size:0.8rem; color:var(--text); line-height:1.35; flex:1; }
+  .np-brief .brief-meta { font-size:0.6rem; color:#666; white-space:nowrap; }
+  .np-brief-img { width:36px; height:36px; object-fit:cover; border-radius:4px; flex-shrink:0; }
+
+  .summary-ja { font-size:0.82rem; color:#e0e0f0; line-height:1.5; }
+
+  /* Action buttons in newspaper */
+  .np-actions { display:flex; gap:6px; margin-top:8px; padding-top:6px; border-top:1px solid var(--border); }
+  .np-actions .action-btn { font-size:0.7rem; padding:4px 10px; }
+
+  /* === POPUP MODAL === */
+  .popup-overlay { position:fixed; inset:0; z-index:200; background:rgba(0,0,0,0.8); display:none; align-items:flex-end; justify-content:center; backdrop-filter:blur(4px); }
+  .popup-overlay.open { display:flex; animation:fadeIn 0.2s; }
+  @keyframes fadeIn { from{opacity:0}to{opacity:1} }
+  .popup-modal { background:var(--surface); border-radius:16px 16px 0 0; width:100%; max-width:800px; max-height:85vh; overflow-y:auto; animation:slideUp 0.3s ease; }
+  @keyframes slideUp { from{transform:translateY(100%)}to{transform:none} }
+  @media(min-width:700px){ .popup-modal { border-radius:16px; max-height:80vh; margin-bottom:40px; } .popup-overlay { align-items:center; } }
+  .popup-header { display:flex; align-items:flex-start; gap:12px; padding:20px 20px 12px; position:sticky; top:0; background:var(--surface); z-index:1; border-bottom:1px solid var(--border); }
+  .popup-title { flex:1; font-size:1.1rem; font-weight:800; color:var(--text); line-height:1.4; }
+  .popup-close { width:32px; height:32px; border-radius:50%; background:var(--surface2); border:none; color:var(--text-dim); font-size:1rem; cursor:pointer; flex-shrink:0; display:flex; align-items:center; justify-content:center; }
+  .popup-close:hover { background:var(--border); }
+  .popup-meta { padding:8px 20px; font-size:0.75rem; color:var(--text-dim); display:flex; gap:8px; align-items:center; flex-wrap:wrap; }
+  .popup-actions { padding:8px 20px; display:flex; gap:6px; flex-wrap:wrap; border-bottom:1px solid var(--border); }
+  .popup-body { padding:16px 20px 32px; font-size:0.9rem; line-height:1.7; color:var(--text); }
+  .popup-body .section-label { font-size:0.75rem; font-weight:700; margin:16px 0 6px; padding:4px 10px; border-radius:4px; display:inline-block; }
+  .popup-body .section-content { margin-bottom:12px; white-space:pre-wrap; }
+  .explain-box { background:rgba(155,109,255,0.1); border:1px solid rgba(155,109,255,0.2); border-radius:10px; padding:14px; margin:12px 0; line-height:1.7; }
+  .explain-box .explain-label { font-size:0.7rem; font-weight:700; color:#9b6dff; margin-bottom:6px; }
+
+  /* Q&A */
+  .popup-qa { border-top:1px solid var(--border); padding:12px 20px calc(20px + env(safe-area-inset-bottom,0px)); padding-bottom:calc(40px + env(safe-area-inset-bottom,0px)); background:var(--surface); }
+  .qa-history { max-height:200px; overflow-y:auto; margin-bottom:8px; }
+  .qa-msg { margin-bottom:8px; font-size:0.85rem; line-height:1.5; }
+  .qa-msg.user { text-align:right; }
+  .qa-msg.user .qa-bubble { background:rgba(108,92,231,0.2); display:inline-block; padding:6px 12px; border-radius:12px 12px 2px 12px; max-width:80%; text-align:left; }
+  .qa-msg.assistant .qa-bubble { background:var(--surface2); display:inline-block; padding:8px 12px; border-radius:12px 12px 12px 2px; max-width:90%; }
+  .qa-input-row { display:flex; gap:6px; }
+  .qa-input { flex:1; padding:10px 14px; background:var(--surface2); border:1px solid var(--border); border-radius:10px; font-size:0.88rem; color:var(--text); outline:none; }
+  .qa-input:focus { border-color:var(--accent); }
+  .qa-send { width:40px; height:40px; border-radius:10px; background:var(--accent,#6c5ce7); border:none; color:#fff; font-size:1rem; cursor:pointer; flex-shrink:0; }
+  .qa-send:hover { opacity:0.8; }
+
+  .article-header {
+    padding: 14px 16px;
+    cursor: pointer;
+  }
+
+  .article-source {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    margin-bottom: 6px;
+    font-size: 12px;
+    color: var(--text-dim);
+  }
+
+  .source-badge {
+    display: inline-block;
+    padding: 2px 8px;
+    border-radius: 4px;
+    font-size: 11px;
+    font-weight: 600;
+    color: #fff;
+    opacity: 0.9;
+  }
+
+  .article-title {
+    font-size: 15px;
+    font-weight: 600;
+    line-height: 1.45;
+    margin-bottom: 6px;
+    color: var(--text);
+  }
+
+  .article-desc {
+    font-size: 13px;
+    line-height: 1.55;
+    color: var(--text-dim);
+    display: -webkit-box;
+    -webkit-line-clamp: 3;
+    -webkit-box-orient: vertical;
+    overflow: hidden;
+  }
+
+  .article-actions {
+    display: flex;
+    gap: 6px;
+    padding: 0 16px 12px 16px;
+    flex-wrap: wrap;
+  }
+
+  .action-btn {
+    padding: 6px 14px;
+    border-radius: 6px;
+    border: 1px solid var(--border);
+    background: transparent;
+    color: var(--text-dim);
+    font-size: 12px;
+    font-weight: 600;
+    cursor: pointer;
+    transition: var(--transition);
+    display: flex;
+    align-items: center;
+    gap: 5px;
+  }
+
+  .action-btn:hover { background: var(--bg-card-hover); color: var(--text); border-color: var(--text-muted); }
+  .action-btn.translate-btn:hover { border-color: var(--accent); color: var(--accent); }
+  .action-btn.summary-btn:hover { border-color: #f0a040; color: #f0a040; }
+  .action-btn.active { border-color: var(--accent); color: var(--accent); background: rgba(255,255,255,0.03); }
+
+  /* Article detail (expanded) */
+  .article-detail {
+    max-height: 0;
+    overflow: hidden;
+    transition: max-height 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+  }
+
+  .article-detail.open {
+    max-height: 3000px;
+  }
+
+  .article-detail-inner {
+    padding: 0 16px 16px 16px;
+    border-top: 1px solid var(--border);
+  }
+
+  .detail-content {
+    font-size: 14px;
+    line-height: 1.7;
+    color: var(--text-dim);
+    padding: 14px 0;
+    white-space: pre-wrap;
+    word-break: break-word;
+  }
+
+  .detail-translation {
+    margin-top: 12px;
+    padding: 14px;
+    background: rgba(255,255,255,0.02);
+    border-left: 3px solid var(--accent);
+    border-radius: 0 var(--radius-sm) var(--radius-sm) 0;
+    font-size: 14px;
+    line-height: 1.7;
+    white-space: pre-wrap;
+  }
+
+  .detail-translation .label {
+    font-size: 11px;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    margin-bottom: 8px;
+    opacity: 0.6;
+  }
+
+  .detail-summary {
+    margin-top: 12px;
+    padding: 14px;
+    background: rgba(240, 160, 64, 0.06);
+    border-left: 3px solid #f0a040;
+    border-radius: 0 var(--radius-sm) var(--radius-sm) 0;
+    font-size: 14px;
+    line-height: 1.7;
+    white-space: pre-wrap;
+  }
+
+  .detail-summary .label {
+    font-size: 11px;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    color: #f0a040;
+    margin-bottom: 8px;
+    opacity: 0.6;
+  }
+
+  .detail-actions {
+    display: flex;
+    gap: 6px;
+    padding-top: 12px;
+    flex-wrap: wrap;
+  }
+
+  .detail-link {
+    padding: 6px 14px;
+    border-radius: 6px;
+    border: 1px solid var(--border);
+    background: transparent;
+    color: var(--text-dim);
+    font-size: 12px;
+    font-weight: 600;
+    cursor: pointer;
+    text-decoration: none;
+    transition: var(--transition);
+    display: inline-flex;
+    align-items: center;
+    gap: 5px;
+  }
+
+  .detail-link:hover { background: var(--bg-card-hover); color: var(--text); }
+
+  /* Spinner */
+  .spinner {
+    display: inline-block;
+    width: 14px;
+    height: 14px;
+    border: 2px solid var(--text-muted);
+    border-top-color: transparent;
+    border-radius: 50%;
+    animation: spin 0.7s linear infinite;
+  }
+
+  .spinner-overlay {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 10px;
+    padding: 30px;
+    color: var(--text-dim);
+    font-size: 13px;
+  }
+
+  /* Settings modal */
+  .modal-overlay {
+    position: fixed;
+    inset: 0;
+    z-index: 200;
+    background: rgba(0,0,0,0.6);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 20px;
+    opacity: 0;
+    pointer-events: none;
+    transition: opacity 0.2s ease;
+  }
+
+  .modal-overlay.open {
+    opacity: 1;
+    pointer-events: all;
+  }
+
+  .modal {
+    background: var(--bg-card);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    padding: 24px;
+    width: 100%;
+    max-width: 400px;
+    transform: scale(0.95);
+    transition: transform 0.2s ease;
+  }
+
+  .modal-overlay.open .modal {
+    transform: scale(1);
+  }
+
+  .modal h2 {
+    font-size: 18px;
+    margin-bottom: 16px;
+    font-weight: 700;
+  }
+
+  .modal label {
+    display: block;
+    font-size: 12px;
+    font-weight: 600;
+    color: var(--text-dim);
+    margin-bottom: 6px;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+  }
+
+  .modal input[type="password"],
+  .modal input[type="text"] {
+    width: 100%;
+    padding: 10px 12px;
+    border: 1px solid var(--border);
+    border-radius: var(--radius-sm);
+    background: var(--bg);
+    color: var(--text);
+    font-size: 14px;
+    outline: none;
+    transition: var(--transition);
+    margin-bottom: 16px;
+    font-family: monospace;
+  }
+
+  .modal input:focus { border-color: var(--accent); }
+
+  .modal-actions {
+    display: flex;
+    gap: 8px;
+    justify-content: flex-end;
+  }
+
+  .btn-primary {
+    padding: 8px 20px;
+    border-radius: var(--radius-sm);
+    border: none;
+    background: var(--accent);
+    color: #fff;
+    font-size: 14px;
+    font-weight: 600;
+    cursor: pointer;
+    transition: var(--transition);
+  }
+
+  .btn-primary:hover { opacity: 0.85; }
+
+  .btn-secondary {
+    padding: 8px 20px;
+    border-radius: var(--radius-sm);
+    border: 1px solid var(--border);
+    background: transparent;
+    color: var(--text-dim);
+    font-size: 14px;
+    font-weight: 600;
+    cursor: pointer;
+    transition: var(--transition);
+  }
+
+  .btn-secondary:hover { background: var(--bg-card-hover); color: var(--text); }
+
+  /* Empty state */
+  .empty-state {
+    text-align: center;
+    padding: 60px 20px;
+    color: var(--text-muted);
+  }
+
+  .empty-state .icon { font-size: 40px; margin-bottom: 12px; opacity: 0.4; }
+  .empty-state .msg { font-size: 14px; }
+
+  /* Toast */
+  .toast-container {
+    position: fixed;
+    top: 70px;
+    left: 50%;
+    transform: translateX(-50%);
+    z-index: 300;
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    pointer-events: none;
+  }
+
+  .toast {
+    background: var(--bg-card);
+    border: 1px solid var(--border);
+    padding: 10px 18px;
+    border-radius: var(--radius-sm);
+    font-size: 13px;
+    color: var(--text);
+    box-shadow: 0 4px 20px rgba(0,0,0,0.4);
+    animation: toastIn 0.3s ease, toastOut 0.3s ease 2.7s forwards;
+    pointer-events: all;
+  }
+
+  .toast.error { border-color: var(--japan); }
+
+  @keyframes toastIn { from { opacity: 0; transform: translateY(-10px); } to { opacity: 1; transform: translateY(0); } }
+  @keyframes toastOut { from { opacity: 1; } to { opacity: 0; transform: translateY(-10px); } }
+
+  /* Keyword alert star badge */
+  .keyword-star {
+    display: inline-block;
+    font-size: 0.7rem;
+    background: linear-gradient(135deg, #fbbf24, #f59e0b);
+    color: #000;
+    padding: 1px 6px;
+    border-radius: 4px;
+    font-weight: 800;
+    margin-left: 6px;
+    vertical-align: middle;
+    animation: starPulse 2s ease-in-out infinite;
+  }
+  @keyframes starPulse { 0%,100%{opacity:1} 50%{opacity:0.7} }
+
+  /* Scrollbar */
+  ::-webkit-scrollbar { width: 6px; }
+  ::-webkit-scrollbar-track { background: transparent; }
+  ::-webkit-scrollbar-thumb { background: var(--border); border-radius: 3px; }
+  ::-webkit-scrollbar-thumb:hover { background: var(--text-muted); }
+
+  /* Skeleton loading */
+  .skeleton-card {
+    background: var(--bg-card);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    padding: 16px;
+    margin-bottom: 10px;
+  }
+
+  .skeleton-line {
+    height: 12px;
+    background: linear-gradient(90deg, var(--border) 25%, var(--bg-card-hover) 50%, var(--border) 75%);
+    background-size: 200% 100%;
+    animation: shimmer 1.5s infinite;
+    border-radius: 4px;
+    margin-bottom: 10px;
+  }
+
+  .skeleton-line:nth-child(1) { width: 30%; height: 10px; }
+  .skeleton-line:nth-child(2) { width: 85%; height: 16px; }
+  .skeleton-line:nth-child(3) { width: 100%; }
+  .skeleton-line:nth-child(4) { width: 70%; }
+
+  @keyframes shimmer { 0% { background-position: 200% 0; } 100% { background-position: -200% 0; } }
+
+  /* Toggle */
+  .toggle-row {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    font-size: 12px;
+    color: var(--text-dim);
+    margin-top: 8px;
+  }
+
+  .toggle-switch {
+    position: relative;
+    width: 36px;
+    height: 20px;
+    background: var(--border);
+    border-radius: 10px;
+    cursor: pointer;
+    transition: var(--transition);
+    border: none;
+    padding: 0;
+  }
+
+  .toggle-switch.on { background: var(--accent); }
+
+  .toggle-switch::after {
+    content: '';
+    position: absolute;
+    width: 16px;
+    height: 16px;
+    border-radius: 50%;
+    background: #fff;
+    top: 2px;
+    left: 2px;
+    transition: var(--transition);
+  }
+
+  .toggle-switch.on::after { left: 18px; }
+
+  /* Read/unread tracking */
+  .article-read { opacity: 0.55; }
+  .article-read:hover { opacity: 0.75; }
+  .tab-badge {
+    position: absolute;
+    top: 2px;
+    right: calc(50% - 18px);
+    min-width: 16px;
+    height: 16px;
+    padding: 0 4px;
+    border-radius: 8px;
+    background: var(--japan);
+    color: #fff;
+    font-size: 9px;
+    font-weight: 800;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    line-height: 1;
+    pointer-events: none;
+  }
+
+  /* Bookmark star */
+  .bookmark-btn {
+    background: none;
+    border: none;
+    font-size: 1.1rem;
+    cursor: pointer;
+    padding: 2px 6px;
+    color: var(--text-muted);
+    transition: var(--transition);
+    flex-shrink: 0;
+  }
+  .bookmark-btn:hover { color: #fbbf24; }
+  .bookmark-btn.bookmarked { color: #fbbf24; }
+
+  /* Bookmark list in settings */
+  .bookmark-list { max-height: 200px; overflow-y: auto; margin-bottom: 16px; }
+  .bookmark-item { display: flex; align-items: center; gap: 8px; padding: 6px 0; border-bottom: 1px solid var(--border); font-size: 0.82rem; color: var(--text); }
+  .bookmark-item a { color: var(--text); text-decoration: none; flex: 1; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .bookmark-item a:hover { color: var(--accent); }
+  .bookmark-remove { background: none; border: none; color: var(--text-muted); cursor: pointer; font-size: 0.9rem; padding: 2px 4px; }
+  .bookmark-remove:hover { color: var(--japan); }
+
+  /* Responsive */
+  @media (min-width: 600px) {
+    .main { padding: 16px 20px 80px 20px; }
+    .article-title { font-size: 16px; }
+  }
+</style>
+</head>
+<body>
+
+<!-- Header -->
+<header class="header">
+  <div class="header-title">News Hub</div>
+  <div class="header-actions">
+    <button class="icon-btn" id="speakBtn" title="音声ブリーフィング" onclick="speakBriefing()" style="font-size:18px">&#128266;</button>
+    <button class="icon-btn" id="refreshBtn" title="更新">
+      <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="23 4 23 10 17 10"/><polyline points="1 20 1 14 7 14"/><path d="M3.51 9a9 9 0 0 1 14.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0 0 20.49 15"/></svg>
+    </button>
+    <button class="icon-btn" id="settingsBtn" title="設定">
+      <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06A1.65 1.65 0 0 0 4.68 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06A1.65 1.65 0 0 0 9 4.68a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06A1.65 1.65 0 0 0 19.4 9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg>
+    </button>
+  </div>
+</header>
+
+<!-- Toast container -->
+<div class="toast-container" id="toastContainer"></div>
+
+<!-- Main content -->
+<main class="main" id="mainContent">
+  <div class="category-bar" id="categoryBar"></div>
+  <div id="dailySummary" style="display:none;margin-bottom:16px;padding:16px;background:linear-gradient(135deg,rgba(108,92,231,0.15),rgba(0,240,255,0.08));border:1px solid rgba(108,92,231,0.3);border-radius:12px">
+    <div style="font-size:0.75rem;color:#9b6dff;font-weight:700;margin-bottom:8px">&#128203; 今日の要点</div>
+    <div id="dailySummaryContent" style="font-size:0.9rem;line-height:1.8;color:#e0e0f0"></div>
+  </div>
+  <div class="feed-status" id="feedStatus"></div>
+  <div id="articleList"></div>
+</main>
+
+<!-- Article Popup Modal -->
+<div class="popup-overlay" id="popupOverlay" onclick="if(event.target===this)closePopup()">
+  <div class="popup-modal" id="popupModal">
+    <div class="popup-header">
+      <div class="popup-title" id="popupTitle"></div>
+      <button class="popup-close" onclick="closePopup()">&#10005;</button>
+    </div>
+    <div class="popup-meta" id="popupMeta"></div>
+    <div class="popup-actions" id="popupActions"></div>
+    <div class="popup-body" id="popupBody"></div>
+    <div class="popup-qa" id="popupQA">
+      <div class="qa-history" id="qaHistory"></div>
+      <div class="qa-input-row">
+        <input type="text" class="qa-input" id="qaInput" placeholder="この記事について質問..." onkeydown="if(event.key==='Enter')askQuestion()">
+        <button class="qa-send" onclick="askQuestion()">&#9654;</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Bottom tabs -->
+<nav class="tabs">
+  <button class="tab active" data-cat="japan" onclick="switchCategory('japan')">
+    <span class="tab-badge" id="badge-japan" style="display:none"></span>
+    <span class="tab-dot"></span>
+    <span>日本</span>
+  </button>
+  <button class="tab" data-cat="france" onclick="switchCategory('france')">
+    <span class="tab-badge" id="badge-france" style="display:none"></span>
+    <span class="tab-dot"></span>
+    <span>フランス</span>
+  </button>
+  <button class="tab" data-cat="world" onclick="switchCategory('world')">
+    <span class="tab-badge" id="badge-world" style="display:none"></span>
+    <span class="tab-dot"></span>
+    <span>世界</span>
+  </button>
+  <button class="tab" data-cat="tech" onclick="switchCategory('tech')">
+    <span class="tab-badge" id="badge-tech" style="display:none"></span>
+    <span class="tab-dot"></span>
+    <span>テック</span>
+  </button>
+</nav>
+
+<!-- Settings modal -->
+<div class="modal-overlay" id="settingsModal">
+  <div class="modal">
+    <h2>設定</h2>
+    <label for="apiKeyInput">Claude API Key</label>
+    <input type="password" id="apiKeyInput" placeholder="sk-ant-api03-..." autocomplete="off">
+    <label for="proxyInput">CORS Proxy URL (任意)</label>
+    <input type="text" id="proxyInput" placeholder="https://api.allorigins.win/raw?url=">
+    <label for="keywordInput">キーワードアラート (カンマ区切り)</label>
+    <input type="text" id="keywordInput" placeholder="AI, 地震, 円安, France">
+    <label>ブックマーク</label>
+    <div class="bookmark-list" id="bookmarkList"><span style="font-size:0.8rem;color:var(--text-muted)">ブックマークはありません</span></div>
+    <div class="modal-actions">
+      <button class="btn-secondary" onclick="closeSettings()">キャンセル</button>
+      <button class="btn-primary" onclick="saveSettings()">保存</button>
+    </div>
+  </div>
+</div>
+
+<script>
+// ─── Configuration ───────────────────────────────────────────────
+const FEEDS = {
+  japan: [
+    { name: 'NHK', url: 'https://www3.nhk.or.jp/rss/news/cat0.xml', lang: 'ja' },
+    { name: 'Yahoo!ニュース', url: 'https://news.yahoo.co.jp/rss/topics/top-picks.xml', lang: 'ja' },
+  ],
+  france: [
+    { name: 'France 24', url: 'https://www.france24.com/fr/rss', lang: 'fr' },
+    { name: 'Le Monde', url: 'https://www.lemonde.fr/rss/une.xml', lang: 'fr' },
+  ],
+  world: [
+    { name: 'BBC World', url: 'https://feeds.bbci.co.uk/news/world/rss.xml', lang: 'en' },
+    { name: 'Reuters', url: 'https://www.rss-bridge.org/bridge01/?action=display&bridge=Reuters&feed=world&format=Atom', lang: 'en' },
+  ],
+  tech: [
+    { name: 'Hacker News', url: 'https://hnrss.org/frontpage', lang: 'en' },
+  ],
+};
+
+const CATEGORY_COLORS = {
+  japan: '#e74c5e',
+  france: '#4a90d9',
+  world: '#43b581',
+  tech: '#9b6dff',
+};
+
+const CATEGORY_LABELS = {
+  japan: '日本',
+  france: 'フランス',
+  world: '世界',
+  tech: 'テック',
+};
+
+const DEFAULT_PROXY = 'https://api.allorigins.win/raw?url=';
+
+// ─── State ───────────────────────────────────────────────────────
+let currentCategory = 'japan';
+let articlesCache = {};    // { category: [articles] }
+let contentCache = {};     // { url: content }
+let translationCache = {}; // { key: translated text }
+let summaryCache = {};     // { url: summary }
+let briefingCache = {};    // { category: briefing }
+let explainCache = {};     // { url: explanation }
+let expandedArticle = null;
+let isLoading = false;
+
+// ─── Read/Unread Tracking ────────────────────────────────────────
+function getReadArticles() {
+  try { return JSON.parse(localStorage.getItem('news_read') || '[]'); } catch(e) { return []; }
+}
+function markAsRead(url) {
+  const read = getReadArticles();
+  if (!read.includes(url)) { read.push(url); localStorage.setItem('news_read', JSON.stringify(read)); }
+  updateUnreadBadges();
+}
+function isArticleRead(url) {
+  return getReadArticles().includes(url);
+}
+function updateUnreadBadges() {
+  const readSet = new Set(getReadArticles());
+  for (const cat of Object.keys(FEEDS)) {
+    const articles = articlesCache[cat] || [];
+    const unread = articles.filter(a => a.link && !readSet.has(a.link)).length;
+    const badge = document.getElementById('badge-' + cat);
+    if (badge) {
+      if (unread > 0) { badge.textContent = unread > 99 ? '99+' : unread; badge.style.display = 'flex'; }
+      else { badge.style.display = 'none'; }
+    }
+  }
+}
+
+// ─── Bookmarks ───────────────────────────────────────────────────
+function getBookmarks() {
+  try { return JSON.parse(localStorage.getItem('news_bookmarks') || '[]'); } catch(e) { return []; }
+}
+function toggleBookmark(url, title) {
+  let bookmarks = getBookmarks();
+  const exists = bookmarks.find(b => b.url === url);
+  if (exists) {
+    bookmarks = bookmarks.filter(b => b.url !== url);
+    showToast('ブックマークを削除しました');
+  } else {
+    bookmarks.unshift({ url, title, date: new Date().toISOString() });
+    showToast('ブックマークに追加しました');
+  }
+  localStorage.setItem('news_bookmarks', JSON.stringify(bookmarks));
+  // Re-render to update star state
+  if (articlesCache[currentCategory]) renderArticles(currentCategory);
+}
+function isBookmarked(url) {
+  return getBookmarks().some(b => b.url === url);
+}
+function renderBookmarkList() {
+  const list = document.getElementById('bookmarkList');
+  const bookmarks = getBookmarks();
+  if (bookmarks.length === 0) {
+    list.innerHTML = '<span style="font-size:0.8rem;color:var(--text-muted)">ブックマークはありません</span>';
+    return;
+  }
+  list.innerHTML = bookmarks.map(b => `
+    <div class="bookmark-item">
+      <a href="${escapeHTML(b.url)}" target="_blank" rel="noopener">${escapeHTML(b.title)}</a>
+      <button class="bookmark-remove" onclick="removeBookmark('${escapeHTML(b.url.replace(/'/g,"\\'"))}')">&#10005;</button>
+    </div>
+  `).join('');
+}
+function removeBookmark(url) {
+  let bookmarks = getBookmarks().filter(b => b.url !== url);
+  localStorage.setItem('news_bookmarks', JSON.stringify(bookmarks));
+  renderBookmarkList();
+  showToast('ブックマークを削除しました');
+}
+
+// ─── Init ────────────────────────────────────────────────────────
+document.addEventListener('DOMContentLoaded', () => {
+  // Show settings on first use if no API key
+  if (!getApiKey()) {
+    openSettings();
+  }
+  loadFeeds(currentCategory);
+  updateCategoryBar();
+  updateUnreadBadges();
+});
+
+document.getElementById('refreshBtn').addEventListener('click', () => {
+  delete articlesCache[currentCategory];
+  loadFeeds(currentCategory);
+});
+
+document.getElementById('settingsBtn').addEventListener('click', openSettings);
+
+// Close modal on overlay click
+document.getElementById('settingsModal').addEventListener('click', (e) => {
+  if (e.target === e.currentTarget) closeSettings();
+});
+
+// ─── Settings ────────────────────────────────────────────────────
+function getApiKey() {
+  return localStorage.getItem('news_claude_key') || '';
+}
+
+function getProxyUrl() {
+  return localStorage.getItem('news_proxy_url') || DEFAULT_PROXY;
+}
+
+function getAlertKeywords() {
+  const raw = localStorage.getItem('news_alert_keywords') || '';
+  return raw.split(',').map(k => k.trim()).filter(Boolean);
+}
+
+function openSettings() {
+  const modal = document.getElementById('settingsModal');
+  document.getElementById('apiKeyInput').value = getApiKey();
+  document.getElementById('proxyInput').value = getProxyUrl();
+  document.getElementById('keywordInput').value = localStorage.getItem('news_alert_keywords') || '';
+  renderBookmarkList();
+  modal.classList.add('open');
+}
+
+function closeSettings() {
+  document.getElementById('settingsModal').classList.remove('open');
+}
+
+function saveSettings() {
+  const key = document.getElementById('apiKeyInput').value.trim();
+  const proxy = document.getElementById('proxyInput').value.trim();
+  const keywords = document.getElementById('keywordInput').value.trim();
+  if (key) localStorage.setItem('news_claude_key', key);
+  if (proxy) localStorage.setItem('news_proxy_url', proxy);
+  else localStorage.removeItem('news_proxy_url');
+  if (keywords) localStorage.setItem('news_alert_keywords', keywords);
+  else localStorage.removeItem('news_alert_keywords');
+  closeSettings();
+  showToast('設定を保存しました');
+  // Re-render to apply keyword highlights
+  if (articlesCache[currentCategory]) renderArticles(currentCategory);
+}
+
+// ─── Toast ───────────────────────────────────────────────────────
+function showToast(msg, isError = false) {
+  const container = document.getElementById('toastContainer');
+  const el = document.createElement('div');
+  el.className = 'toast' + (isError ? ' error' : '');
+  el.textContent = msg;
+  container.appendChild(el);
+  setTimeout(() => el.remove(), 3000);
+}
+
+// ─── Category ────────────────────────────────────────────────────
+function switchCategory(cat) {
+  currentCategory = cat;
+  document.querySelectorAll('.tab').forEach(t => {
+    t.classList.toggle('active', t.dataset.cat === cat);
+  });
+  document.documentElement.style.setProperty('--accent', CATEGORY_COLORS[cat]);
+  updateCategoryBar();
+  expandedArticle = null;
+
+  if (articlesCache[cat]) {
+    renderArticles(cat);
+    window.scrollTo(0, 0);
+    const status = document.getElementById('feedStatus');
+    status.textContent = briefingCache[cat] ? `${articlesCache[cat].length} 件 — 重要度順` : `${articlesCache[cat].length} 件`;
+  } else {
+    loadFeeds(cat);
+  }
+}
+
+function updateCategoryBar() {
+  const bar = document.getElementById('categoryBar');
+  bar.style.background = CATEGORY_COLORS[currentCategory];
+}
+
+// ─── RSS Fetching ────────────────────────────────────────────────
+async function loadFeeds(category) {
+  if (isLoading) return;
+  isLoading = true;
+
+  const btn = document.getElementById('refreshBtn');
+  btn.classList.add('spinning');
+
+  const list = document.getElementById('articleList');
+  const status = document.getElementById('feedStatus');
+  status.textContent = '';
+
+  // Show skeleton
+  list.innerHTML = Array(5).fill(0).map(() => `
+    <div class="skeleton-card">
+      <div class="skeleton-line"></div>
+      <div class="skeleton-line"></div>
+      <div class="skeleton-line"></div>
+      <div class="skeleton-line"></div>
+    </div>
+  `).join('');
+
+  const feeds = FEEDS[category];
+  const proxyBase = getProxyUrl();
+  let allArticles = [];
+  let successCount = 0;
+  let errorFeeds = [];
+
+  const promises = feeds.map(async (feed) => {
+    try {
+      const proxyUrl = proxyBase + encodeURIComponent(feed.url);
+      const res = await fetch(proxyUrl, { signal: AbortSignal.timeout(15000) });
+      if (!res.ok) throw new Error(`HTTP ${res.status}`);
+      const text = await res.text();
+      const articles = parseRSS(text, feed);
+      allArticles.push(...articles);
+      successCount++;
+    } catch (err) {
+      console.warn(`Failed to fetch ${feed.name}:`, err);
+      errorFeeds.push(feed.name);
+    }
+  });
+
+  await Promise.all(promises);
+
+  // Sort by date (newest first)
+  allArticles.sort((a, b) => (b.dateObj?.getTime() || 0) - (a.dateObj?.getTime() || 0));
+  articlesCache[category] = allArticles;
+
+  if (errorFeeds.length > 0) {
+    status.textContent = `${successCount} フィード取得済み / ${errorFeeds.join(', ')} 取得失敗`;
+  } else {
+    status.textContent = `${allArticles.length} 件の記事 — ブリーフィング生成中...`;
+  }
+
+  renderArticles(category);
+  btn.classList.remove('spinning');
+  isLoading = false;
+
+  // Auto-briefing: sort by importance + translate + summarize
+  if (allArticles.length > 0 && getApiKey()) {
+    generateBriefing(category, allArticles);
+  } else if (!getApiKey()) {
+    status.textContent = `${allArticles.length} 件の記事 (APIキー未設定: ブリーフィングなし)`;
+  }
+}
+
+// ─── AI Briefing ─────────────────────────────────────────────────
+async function generateBriefing(category, articles) {
+  if (briefingCache[category]) {
+    applyBriefing(category, briefingCache[category]);
+    return;
+  }
+
+  const status = document.getElementById('feedStatus');
+  const summaries = articles.slice(0, 15).map((a, i) =>
+    `[${i}] ${a.source} | ${a.title} | ${a.description?.slice(0, 150) || ''}`
+  ).join('\n');
+
+  const lang = articles[0]?.lang || 'en';
+  const prompt = `以下は${lang === 'ja' ? '日本語' : lang === 'fr' ? 'フランス語' : '英語'}のニュース記事一覧です。
+
+${summaries}
+
+以下のJSON形式で返してください（コードブロック不要、JSONのみ）:
+[
+  {"idx": 記事番号, "importance": 1-10の重要度, "summary_ja": "日本語で1-2行の要約", "why": "重要な理由を1文で", "impact": "日本在住者への影響を1文で"}
+]
+
+重要度の基準: 国際的影響度、緊急性、多くの人に関係するかで判断。
+全記事を重要度の高い順に並べてください。`;
+
+  try {
+    const result = await callClaude(prompt);
+    const cleaned = result.replace(/```json?\s*/g, '').replace(/```/g, '').trim();
+    const briefing = JSON.parse(cleaned);
+    briefingCache[category] = briefing;
+    applyBriefing(category, briefing);
+    status.textContent = `${articles.length} 件 — 重要度順で表示中`;
+    updateDailySummary();
+  } catch (e) {
+    console.error('Briefing error:', e);
+    status.textContent = `${articles.length} 件の記事 (ブリーフィング生成失敗)`;
+  }
+}
+
+function applyBriefing(category, briefing) {
+  const articles = articlesCache[category];
+  if (!articles) return;
+
+  // Apply importance scores, summaries, and why
+  briefing.forEach(b => {
+    if (articles[b.idx]) {
+      articles[b.idx].importance = b.importance;
+      articles[b.idx].summary_ja = b.summary_ja;
+      articles[b.idx].why = b.why || '';
+      articles[b.idx].impact = b.impact || '';
+    }
+  });
+
+  // Sort by importance (highest first)
+  articles.sort((a, b) => (b.importance || 0) - (a.importance || 0));
+  renderArticles(category);
+}
+
+// ─── RSS Parsing ─────────────────────────────────────────────────
+function parseRSS(xmlText, feed) {
+  const parser = new DOMParser();
+  const doc = parser.parseFromString(xmlText, 'text/xml');
+
+  // Check for parse errors
+  if (doc.querySelector('parsererror')) {
+    console.warn('XML parse error for', feed.name);
+    return [];
+  }
+
+  // Extract image from RSS item
+  function getItemImage(item) {
+    // media:content or media:thumbnail
+    const media = item.querySelector('content[url]') || item.getElementsByTagNameNS('http://search.yahoo.com/mrss/', 'content')[0] || item.getElementsByTagNameNS('http://search.yahoo.com/mrss/', 'thumbnail')[0];
+    if (media?.getAttribute('url')) return media.getAttribute('url');
+    // enclosure
+    const enc = item.querySelector('enclosure[type^="image"]');
+    if (enc?.getAttribute('url')) return enc.getAttribute('url');
+    // image tag in description
+    const desc = item.querySelector('description')?.textContent || '';
+    const imgMatch = desc.match(/<img[^>]+src=["']([^"']+)["']/);
+    if (imgMatch) return imgMatch[1];
+    return '';
+  }
+
+  // Try RSS format
+  let items = doc.querySelectorAll('item');
+  if (items.length > 0) {
+    return Array.from(items).slice(0, 20).map(item => {
+      const pubDate = item.querySelector('pubDate')?.textContent || '';
+      return {
+        title: cleanText(item.querySelector('title')?.textContent || ''),
+        link: item.querySelector('link')?.textContent?.trim() || '',
+        description: cleanText(stripHTML(item.querySelector('description')?.textContent || '')),
+        image: getItemImage(item),
+        pubDate: pubDate,
+        dateObj: pubDate ? new Date(pubDate) : null,
+        source: feed.name,
+        lang: feed.lang,
+        category: currentCategory,
+      };
+    });
+  }
+
+  // Try Atom format
+  const entries = doc.querySelectorAll('entry');
+  if (entries.length > 0) {
+    return Array.from(entries).slice(0, 20).map(entry => {
+      const updated = entry.querySelector('updated')?.textContent || entry.querySelector('published')?.textContent || '';
+      const linkEl = entry.querySelector('link[href]');
+      return {
+        title: cleanText(entry.querySelector('title')?.textContent || ''),
+        link: linkEl ? linkEl.getAttribute('href') : '',
+        description: cleanText(stripHTML(entry.querySelector('summary')?.textContent || entry.querySelector('content')?.textContent || '')),
+        pubDate: updated,
+        dateObj: updated ? new Date(updated) : null,
+        source: feed.name,
+        lang: feed.lang,
+        category: currentCategory,
+      };
+    });
+  }
+
+  return [];
+}
+
+function stripHTML(html) {
+  const tmp = document.createElement('div');
+  tmp.innerHTML = html;
+  return tmp.textContent || tmp.innerText || '';
+}
+
+function cleanText(text) {
+  return text.replace(/\s+/g, ' ').trim();
+}
+
+function formatDate(dateObj) {
+  if (!dateObj || isNaN(dateObj.getTime())) return '';
+  const now = new Date();
+  const diff = now - dateObj;
+  const minutes = Math.floor(diff / 60000);
+  const hours = Math.floor(diff / 3600000);
+
+  if (minutes < 1) return 'たった今';
+  if (minutes < 60) return `${minutes}分前`;
+  if (hours < 24) return `${hours}時間前`;
+
+  const days = Math.floor(hours / 24);
+  if (days < 7) return `${days}日前`;
+
+  return dateObj.toLocaleDateString('ja-JP', { month: 'short', day: 'numeric' });
+}
+
+// ─── Keyword Alert ───────────────────────────────────────────────
+function articleMatchesKeyword(article) {
+  const keywords = getAlertKeywords();
+  if (keywords.length === 0) return false;
+  const text = (article.title + ' ' + (article.description || '') + ' ' + (article.summary_ja || '')).toLowerCase();
+  return keywords.some(kw => text.includes(kw.toLowerCase()));
+}
+
+function keywordBadgeHTML(article) {
+  if (!articleMatchesKeyword(article)) return '';
+  return '<span class="keyword-star">&#9733; ALERT</span>';
+}
+
+// ─── Render ──────────────────────────────────────────────────────
+function renderArticles(category) {
+  const articles = articlesCache[category] || [];
+  const list = document.getElementById('articleList');
+  const color = CATEGORY_COLORS[category];
+
+  if (articles.length === 0) {
+    list.innerHTML = `
+      <div class="empty-state">
+        <div class="icon">&#128240;</div>
+        <div class="msg">記事が見つかりませんでした<br>更新ボタンを押してください</div>
+      </div>
+    `;
+    return;
+  }
+
+  // Split articles by importance tier
+  const top = articles.filter(a => (a.importance||0) >= 7);
+  const mid = articles.filter(a => (a.importance||0) >= 4 && (a.importance||0) < 7);
+  const low = articles.filter(a => (a.importance||0) < 4);
+  // If no importance yet, show all as mid
+  const noAI = articles.every(a => !a.importance);
+
+  const today = new Date().toLocaleDateString('ja-JP',{year:'numeric',month:'long',day:'numeric',weekday:'long'});
+  let html = `<div class="np-date-header">${today}</div>`;
+
+  // === TOP STORY ===
+  if (top.length > 0) {
+    const a = top[0]; const idx = articles.indexOf(a);
+    const articleId = `article-${category}-${idx}`;
+    const isJa = a.lang==='ja';
+    const topRead = isArticleRead(a.link) ? ' article-read' : '';
+    const topBm = isBookmarked(a.link);
+    html += `<div class="np-top${topRead}" id="card-${articleId}">
+      ${a.image ? `<div class="card-hero" style="background-image:url('${a.image}')" onclick="toggleArticle('${articleId}',${idx})"><div class="card-hero-overlay">
+        <span class="imp-badge imp-high">TOP</span>
+        <div class="headline">${escapeHTML(a.title)}${keywordBadgeHTML(a)}</div>
+        ${a.summary_ja ? `<div class="summary-ja">${escapeHTML(a.summary_ja)}</div>` : ''}
+        ${a.why ? `<div style="font-size:0.75rem;color:#ccc;margin-top:2px">${escapeHTML(a.why)}</div>` : ''}
+        ${a.impact ? `<div style="font-size:0.72rem;color:#fbbf24;margin-top:2px">&#127471;&#127477; ${escapeHTML(a.impact)}</div>` : ''}
+        <div class="np-meta"><span class="source-badge" style="background:${color}">${escapeHTML(a.source)}</span><span>${formatDate(a.dateObj)}</span></div>
+      </div></div>` : `<div class="np-top-noimg" onclick="toggleArticle('${articleId}',${idx})">
+        <span class="imp-badge imp-high">TOP</span>
+        <div class="headline">${escapeHTML(a.title)}${keywordBadgeHTML(a)}</div>
+        ${a.summary_ja ? `<div class="summary-ja">${escapeHTML(a.summary_ja)}</div>` : `<div class="summary-ja">${escapeHTML(a.description)}</div>`}
+        ${a.why ? `<div style="font-size:0.75rem;color:#ccc;margin-top:2px">${escapeHTML(a.why)}</div>` : ''}
+        ${a.impact ? `<div style="font-size:0.72rem;color:#fbbf24;margin-top:2px">&#127471;&#127477; ${escapeHTML(a.impact)}</div>` : ''}
+        <div class="np-meta"><span class="source-badge" style="background:${color}">${escapeHTML(a.source)}</span><span>${formatDate(a.dateObj)}</span></div>
+      </div>`}
+      <div class="np-actions" style="padding:0 12px 8px">
+        ${!isJa?`<button class="action-btn translate-btn" onclick="translateArticleTitle(${idx})">翻訳</button>`:''}
+        <button class="action-btn" onclick="toggleArticle('${articleId}',${idx})">詳細</button>
+        <button class="bookmark-btn ${topBm?'bookmarked':''}" onclick="event.stopPropagation();toggleBookmark('${escapeHTML(a.link.replace(/'/g,"\\'"))}','${escapeHTML(a.title.replace(/'/g,"\\'"))}')">${topBm?'&#9733;':'&#9734;'}</button>
+      </div>
+      <div class="article-detail" id="detail-${articleId}"><div class="article-detail-inner" id="detail-inner-${articleId}"></div></div>
+    </div>`;
+    // Additional top stories as mid
+    if (top.length > 1) mid.unshift(...top.slice(1));
+  }
+
+  // === MID STORIES (masonry layout with varied card shapes) ===
+  const midList = noAI ? articles : mid;
+  if (midList.length > 0) {
+    html += `<div class="np-masonry">`;
+    midList.forEach((a, mi) => {
+      const idx = articles.indexOf(a);
+      const articleId = `article-${category}-${idx}`;
+      const isJa = a.lang==='ja';
+      const imp = a.importance || 5;
+      // Vary card shape based on importance and position
+      let shape;
+      if (imp >= 6) shape = a.image ? 'card-tall' : 'card-wide';
+      else if (imp >= 4) shape = a.image ? 'card-square' : 'card-text-only';
+      else shape = a.image ? 'card-compact' : 'card-text-only';
+      // Mix it up: every 3rd mid card with image gets tall
+      if (a.image && mi % 3 === 0 && imp >= 4) shape = 'card-tall';
+
+      const midRead = isArticleRead(a.link) ? ' article-read' : '';
+      const midBm = isBookmarked(a.link);
+      html += `<div class="np-mid-card ${shape}${midRead}" id="card-${articleId}" style="border-left-color:${imp>=8?'#e74c5e':imp>=5?'#fbbf24':'#43b581'}" onclick="toggleArticle('${articleId}',${idx})">
+        ${a.image && shape !== 'card-text-only' ? `<img class="mid-img" src="${a.image}" onerror="this.style.display='none'" alt="">` : ''}
+        <div class="mid-body">
+          <div style="display:flex;align-items:flex-start;gap:4px"><div style="flex:1"><div class="mid-title">${escapeHTML(a.title)}${keywordBadgeHTML(a)}</div></div><button class="bookmark-btn ${midBm?'bookmarked':''}" onclick="event.stopPropagation();toggleBookmark('${escapeHTML(a.link.replace(/'/g,"\\'"))}','${escapeHTML(a.title.replace(/'/g,"\\'"))}')">${midBm?'&#9733;':'&#9734;'}</button></div>
+          ${a.summary_ja ? `<div class="mid-summary">${escapeHTML(a.summary_ja)}</div>` : (shape!=='card-compact'?`<div class="mid-summary">${escapeHTML(a.description?.slice(0,100)||'')}</div>`:'')}
+          ${a.why ? `<div class="mid-summary" style="color:#9b6dff;font-size:0.72rem;margin-top:2px">${escapeHTML(a.why)}</div>` : ''}
+          ${a.impact ? `<div class="mid-summary" style="color:#fbbf24;font-size:0.68rem;margin-top:1px">&#127471;&#127477; ${escapeHTML(a.impact)}</div>` : ''}
+          <div class="np-meta">
+            <span class="source-badge" style="background:${color};font-size:0.55rem;padding:1px 5px">${escapeHTML(a.source)}</span>
+            <span>${formatDate(a.dateObj)}</span>
+          </div>
+        </div>
+      </div>`;
+    });
+    html += `</div>`;
+  }
+
+  // === BOTTOM BRIEFS ===
+  if (low.length > 0 && !noAI) {
+    html += `<div class="np-section"><div style="font-size:0.7rem;color:var(--text-dim);padding:6px 0;border-bottom:1px solid var(--border);margin-bottom:4px;letter-spacing:1px">その他のニュース</div>`;
+    low.forEach(a => {
+      const idx = articles.indexOf(a);
+      const articleId = `article-${category}-${idx}`;
+      const briefRead = isArticleRead(a.link) ? ' article-read' : '';
+      const briefBm = isBookmarked(a.link);
+      html += `<div class="np-brief${briefRead}" id="card-${articleId}" onclick="toggleArticle('${articleId}',${idx})">
+        <div class="brief-dot" style="background:${color}"></div>
+        ${a.image ? `<img class="np-brief-img" src="${a.image}" onerror="this.style.display='none'" alt="">` : ''}
+        <div class="brief-title">${a.summary_ja ? escapeHTML(a.summary_ja) : escapeHTML(a.title)}${keywordBadgeHTML(a)}</div>
+        <button class="bookmark-btn ${briefBm?'bookmarked':''}" onclick="event.stopPropagation();toggleBookmark('${escapeHTML(a.link.replace(/'/g,"\\'"))}','${escapeHTML(a.title.replace(/'/g,"\\'"))}')" style="font-size:0.9rem">${briefBm?'&#9733;':'&#9734;'}</button>
+        <div class="brief-meta">${escapeHTML(a.source)}<br>${formatDate(a.dateObj)}</div>
+      </div>
+      <div class="article-detail" id="detail-${articleId}"><div class="article-detail-inner" id="detail-inner-${articleId}"></div></div>`;
+    });
+    html += `</div>`;
+  }
+
+  list.innerHTML = html;
+  updateUnreadBadges();
+}
+
+function getDetailHTML(article, idx) {
+  const url = article.link;
+  const cacheKey = url;
+  const hasContent = contentCache[cacheKey];
+  const isJa = article.lang === 'ja';
+  const translationKey = `content-${cacheKey}`;
+  const hasTranslation = translationCache[translationKey];
+  const titleTransKey = `title-${cacheKey}`;
+  const hasTitleTranslation = translationCache[titleTransKey];
+  const hasSummary = summaryCache[cacheKey];
+
+  let html = '<div class="detail-actions">';
+
+  if (!isJa) {
+    html += `<button class="action-btn translate-btn" onclick="event.stopPropagation(); translateContent(${idx})">コンテンツ翻訳</button>`;
+  }
+  html += `<button class="action-btn summary-btn" onclick="event.stopPropagation(); summarizeArticle(${idx})">要約</button>`;
+  html += `<button class="action-btn" style="background:rgba(155,109,255,0.15);color:#9b6dff" onclick="event.stopPropagation(); explainArticle(${idx})">解説</button>`;
+  html += `<a class="detail-link" href="${escapeHTML(url)}" target="_blank" rel="noopener" onclick="event.stopPropagation();">元の記事 &#8599;</a>`;
+  html += '</div>';
+
+  if (hasTitleTranslation) {
+    html += `<div class="detail-translation"><div class="label">タイトル翻訳</div>${escapeHTML(translationCache[titleTransKey])}</div>`;
+  }
+
+  if (hasSummary) {
+    html += `<div class="detail-summary"><div class="label">要約</div>${escapeHTML(summaryCache[cacheKey])}</div>`;
+  }
+
+  if (hasContent) {
+    if (hasTranslation) {
+      html += `<div class="detail-translation"><div class="label">翻訳</div>${escapeHTML(translationCache[translationKey])}</div>`;
+    }
+    html += `<div class="detail-content">${escapeHTML(contentCache[cacheKey])}</div>`;
+  } else {
+    html += `<div class="spinner-overlay" id="content-loader-${idx}"><div class="spinner"></div> コンテンツを読み込み中...</div>`;
+  }
+
+  return html;
+}
+
+function escapeHTML(str) {
+  const div = document.createElement('div');
+  div.textContent = str;
+  return div.innerHTML;
+}
+
+function mdToHTML(text) {
+  if (!text) return '';
+  return escapeHTML(text)
+    .replace(/^### (.+)$/gm, '<h4 style="color:var(--text);margin:12px 0 4px;font-size:0.9rem">$1</h4>')
+    .replace(/^## (.+)$/gm, '<h3 style="color:#9b6dff;margin:14px 0 6px;font-size:0.95rem;border-bottom:1px solid var(--border);padding-bottom:4px">$1</h3>')
+    .replace(/^# (.+)$/gm, '<h3 style="color:#9b6dff;margin:14px 0 6px;font-size:1rem">$1</h3>')
+    .replace(/\*\*(.+?)\*\*/g, '<strong style="color:var(--text)">$1</strong>')
+    .replace(/^- (.+)$/gm, '<div style="padding-left:12px">• $1</div>')
+    .replace(/\n\n/g, '<br><br>')
+    .replace(/\n/g, '<br>');
+}
+
+// ─── Article Popup ───────────────────────────────────────────────
+let currentPopupIdx = null;
+
+async function toggleArticle(articleId, idx) {
+  const articles = articlesCache[currentCategory];
+  const article = articles[idx];
+  if (!article) return;
+  currentPopupIdx = idx;
+  const color = CATEGORY_COLORS[currentCategory];
+  const isJa = article.lang === 'ja';
+
+  // Mark as read
+  if (article.link) {
+    markAsRead(article.link);
+    const cardEl = document.getElementById('card-' + articleId);
+    if (cardEl) cardEl.classList.add('article-read');
+  }
+
+  document.getElementById('popupTitle').textContent = article.title;
+  document.getElementById('popupMeta').innerHTML = `
+    <span class="source-badge" style="background:${color}">${escapeHTML(article.source)}</span>
+    <span>${formatDate(article.dateObj)}</span>
+    ${article.importance ? `<span class="imp-badge ${article.importance>=7?'imp-high':article.importance>=4?'imp-mid':'imp-low'}">重要度 ${article.importance}</span>` : ''}
+  `;
+
+  const _bm = isBookmarked(article.link);
+  document.getElementById('popupActions').innerHTML = `
+    ${!isJa ? `<button class="action-btn translate-btn" onclick="translateArticleTitle(${idx})">翻訳</button>` : ''}
+    ${!isJa ? `<button class="action-btn translate-btn" onclick="translateContent(${idx})">全文翻訳</button>` : ''}
+    <button class="action-btn summary-btn" onclick="summarizeArticle(${idx})">要約</button>
+    <button class="action-btn" style="background:rgba(155,109,255,0.15);color:#9b6dff" onclick="explainArticle(${idx})">解説</button>
+    <button class="bookmark-btn ${_bm?'bookmarked':''}" onclick="toggleBookmark('${escapeHTML(article.link.replace(/'/g,"\\'"))}','${escapeHTML(article.title.replace(/'/g,"\\'"))}')">${_bm?'&#9733;':'&#9734;'}</button>
+    <a class="action-btn" href="${escapeHTML(article.link)}" target="_blank" rel="noopener" style="text-decoration:none">元の記事 &#8599;</a>
+  `;
+
+  updatePopupBody(article, idx);
+  document.getElementById('popupOverlay').classList.add('open');
+  document.body.style.overflow = 'hidden';
+
+  if (!contentCache[article.link]) {
+    await fetchArticleContent(article.link, idx);
+    if (currentPopupIdx === idx) updatePopupBody(article, idx);
+  }
+
+  // Auto-summarize on open
+  if (!summaryCache[article.link] && getApiKey()) {
+    await summarizeArticle(idx);
+  }
+}
+
+function updatePopupBody(article, idx) {
+  const url = article.link;
+  const isJa = article.lang === 'ja';
+  let html = '';
+
+  if (article.summary_ja) {
+    html += `<div style="background:rgba(108,92,231,0.1);border-radius:8px;padding:12px;margin-bottom:12px;font-size:0.88rem">&#128203; ${escapeHTML(article.summary_ja)}${article.why ? `<div style="font-size:0.78rem;color:#9b6dff;margin-top:6px">&#9656; ${escapeHTML(article.why)}</div>` : ''}${article.impact ? `<div style="font-size:0.78rem;color:#fbbf24;margin-top:4px">&#127471;&#127477; ${escapeHTML(article.impact)}</div>` : ''}</div>`;
+  }
+
+  const titleTransKey = 'title-' + url;
+  if (translationCache[titleTransKey]) {
+    html += `<div style="background:rgba(74,144,217,0.1);border-radius:8px;padding:10px;margin-bottom:12px;font-size:0.88rem"><span class="section-label" style="background:#4a90d9;color:#fff">タイトル翻訳</span><br>${escapeHTML(translationCache[titleTransKey])}</div>`;
+  }
+
+  if (summaryCache[url]) {
+    html += `<div style="background:rgba(251,191,36,0.1);border-radius:8px;padding:10px;margin-bottom:12px;font-size:0.88rem"><span class="section-label" style="background:#fbbf24;color:#000">要約</span><br>${mdToHTML(summaryCache[url])}</div>`;
+  }
+
+  if (explainCache[url]) {
+    html += `<div class="explain-box"><div class="explain-label">🔍 解説</div>${mdToHTML(explainCache[url])}</div>`;
+  }
+
+  const contentTransKey = 'content-' + url;
+  if (translationCache[contentTransKey]) {
+    html += `<div style="background:rgba(74,144,217,0.08);border-radius:8px;padding:12px;margin-bottom:12px"><span class="section-label" style="background:#4a90d9;color:#fff">全文翻訳</span><div style="margin-top:8px;white-space:pre-wrap">${escapeHTML(translationCache[contentTransKey])}</div></div>`;
+  }
+
+  if (contentCache[url]) {
+    html += `<div style="border-top:1px solid var(--border);padding-top:12px;margin-top:8px;white-space:pre-wrap;color:var(--text-dim);font-size:0.85rem">${escapeHTML(contentCache[url])}</div>`;
+  } else {
+    html += `<div style="text-align:center;padding:20px"><div class="spinner"></div> コンテンツを読み込み中...</div>`;
+  }
+
+  document.getElementById('popupBody').innerHTML = html;
+}
+
+function closePopup() {
+  document.getElementById('popupOverlay').classList.remove('open');
+  document.body.style.overflow = '';
+  currentPopupIdx = null;
+  qaMessages = [];
+  document.getElementById('qaHistory').innerHTML = '';
+  document.getElementById('qaInput').value = '';
+}
+
+// ─── Q&A ─────────────────────────────────────────────────────────
+let qaMessages = [];
+
+async function askQuestion() {
+  const input = document.getElementById('qaInput');
+  const question = input.value.trim();
+  if (!question || !getApiKey()) return;
+  input.value = '';
+
+  const articles = articlesCache[currentCategory];
+  const article = articles[currentPopupIdx];
+  if (!article) return;
+
+  // Add user message
+  qaMessages.push({ role: 'user', text: question });
+  renderQA();
+
+  // Build context
+  const content = contentCache[article.link] || article.description || '';
+  const summary = summaryCache[article.link] || article.summary_ja || '';
+
+  const systemPrompt = `あなたはニュース解説アシスタントです。以下の記事について、ユーザーの質問に日本語で簡潔に回答してください。
+
+記事タイトル: ${article.title}
+要約: ${summary}
+本文: ${content.slice(0, 3000)}`;
+
+  const messages = [
+    { role: 'user', content: systemPrompt + '\n\n質問: ' + qaMessages.filter(m=>m.role==='user').map(m=>m.text).join('\n') }
+  ];
+
+  // Show thinking
+  qaMessages.push({ role: 'assistant', text: '...' });
+  renderQA();
+
+  try {
+    const apiKey = getApiKey();
+    const res = await fetch('https://api.anthropic.com/v1/messages', {
+      method: 'POST',
+      headers: {
+        'x-api-key': apiKey,
+        'anthropic-version': '2023-06-01',
+        'content-type': 'application/json',
+        'anthropic-dangerous-direct-browser-access': 'true',
+      },
+      body: JSON.stringify({
+        model: 'claude-haiku-4-5-20251001',
+        max_tokens: 1000,
+        messages,
+      }),
+    });
+    const data = await res.json();
+    const answer = data.content?.[0]?.text || 'エラーが発生しました';
+    qaMessages[qaMessages.length - 1].text = answer;
+  } catch (e) {
+    qaMessages[qaMessages.length - 1].text = '回答の取得に失敗しました';
+  }
+  renderQA();
+}
+
+function renderQA() {
+  const container = document.getElementById('qaHistory');
+  container.innerHTML = qaMessages.map(m => `
+    <div class="qa-msg ${m.role}">
+      <div class="qa-bubble">${m.role==='assistant' ? mdToHTML(m.text) : escapeHTML(m.text)}</div>
+    </div>
+  `).join('');
+  container.scrollTop = container.scrollHeight;
+}
+
+// ─── Explain Article ─────────────────────────────────────────────
+async function explainArticle(idx) {
+  const articles = articlesCache[currentCategory];
+  const article = articles[idx];
+  if (!article || !getApiKey()) { showToast('APIキーを設定してください',true); return; }
+  if (explainCache[article.link]) { updatePopupBody(article, idx); return; }
+
+  showToast('解説を生成中...');
+  const content = contentCache[article.link] || article.description || '';
+  const prompt = `以下のニュース記事について、日本語で分かりやすく解説してください。
+- 背景・経緯を簡潔に説明
+- なぜこれが重要なのか
+- 今後の影響や見通し
+各項目2-3文で簡潔に。
+
+タイトル: ${article.title}
+内容: ${content.slice(0, 3000)}`;
+
+  try {
+    const result = await callClaude(prompt);
+    explainCache[article.link] = result;
+    if (currentPopupIdx === idx) updatePopupBody(article, idx);
+    showToast('解説を生成しました');
+  } catch(e) {
+    showToast('解説の生成に失敗しました', true);
+  }
+}
+
+// ─── Article Content Fetching ────────────────────────────────────
+async function fetchArticleContent(url, idx) {
+  // Multiple proxy fallbacks
+  const proxies = [
+    getProxyUrl(),
+    'https://api.allorigins.win/raw?url=',
+    'https://corsproxy.io/?',
+  ];
+
+  let content = null;
+
+  for (const proxy of proxies) {
+    try {
+      const proxyUrl = proxy + encodeURIComponent(url);
+      const res = await fetch(proxyUrl, { signal: AbortSignal.timeout(12000) });
+      if (!res.ok) continue;
+      const html = await res.text();
+      if (html.length < 200) continue;
+      const doc = new DOMParser().parseFromString(html, 'text/html');
+      doc.querySelectorAll('script, style, nav, header, footer, aside, .ad, .advertisement, .social-share').forEach(el => el.remove());
+
+      const selectors = ['article', '[role="main"]', '.article-body', '.article-content', '.story-body', '.post-content', 'main', '.content', '#content', '.entry-content'];
+      for (const sel of selectors) {
+        const el = doc.querySelector(sel);
+        if (el && el.textContent.trim().length > 100) { content = el.textContent.trim(); break; }
+      }
+      if (!content) {
+        const paras = Array.from(doc.querySelectorAll('p')).map(p => p.textContent.trim()).filter(t => t.length > 30);
+        content = paras.join('\n\n');
+      }
+      if (content && content.length > 50) break;
+      content = null;
+    } catch (e) { continue; }
+  }
+
+  if (content) {
+    contentCache[url] = content.replace(/\n{3,}/g,'\n\n').replace(/[ \t]+/g,' ').trim().slice(0,5000);
+  } else {
+    // Fallback: use RSS description + auto-translate if needed
+    const article = articlesCache[currentCategory]?.find(a => a.link === url);
+    if (article?.description) {
+      const desc = article.description;
+      if (article.lang !== 'ja' && getApiKey()) {
+        try {
+          const translated = await callClaude(`以下のニュース概要を日本語に翻訳してください。翻訳のみ出力:\n\n${desc}`);
+          contentCache[url] = `【自動翻訳（概要より）】\n\n${translated}`;
+        } catch(e) {
+          contentCache[url] = desc;
+        }
+      } else {
+        contentCache[url] = desc;
+      }
+    } else {
+      contentCache[url] = 'コンテンツの取得に失敗しました。';
+    }
+  }
+
+  // Re-render the detail if still expanded
+  refreshExpandedDetail(idx);
+}
+
+function refreshExpandedDetail(idx) {
+  if (currentPopupIdx === idx) {
+    const articles = articlesCache[currentCategory];
+    if (articles[idx]) updatePopupBody(articles[idx], idx);
+  }
+}
+
+// ─── Claude API Translation ─────────────────────────────────────
+async function callClaude(prompt) {
+  const apiKey = getApiKey();
+  if (!apiKey) {
+    showToast('APIキーを設定してください', true);
+    openSettings();
+    throw new Error('No API key');
+  }
+
+  const res = await fetch('https://api.anthropic.com/v1/messages', {
+    method: 'POST',
+    headers: {
+      'x-api-key': apiKey,
+      'anthropic-version': '2023-06-01',
+      'content-type': 'application/json',
+      'anthropic-dangerous-direct-browser-access': 'true',
+    },
+    body: JSON.stringify({
+      model: 'claude-haiku-4-5-20251001',
+      max_tokens: 2000,
+      messages: [{ role: 'user', content: prompt }],
+    }),
+  });
+
+  if (!res.ok) {
+    const errBody = await res.text();
+    console.error('Claude API error:', res.status, errBody);
+    if (res.status === 401) {
+      showToast('APIキーが無効です。設定を確認してください。', true);
+      throw new Error('Invalid API key');
+    }
+    throw new Error(`Claude API error: ${res.status}`);
+  }
+
+  const data = await res.json();
+  return data.content?.[0]?.text || '';
+}
+
+async function translateArticleTitle(idx) {
+  const articles = articlesCache[currentCategory];
+  const article = articles[idx];
+  const cacheKey = `title-${article.link}`;
+
+  if (translationCache[cacheKey]) {
+    showToast('翻訳済みです');
+    return;
+  }
+
+  // Show spinner on the button
+  const card = document.getElementById(`card-article-${currentCategory}-${idx}`);
+  const btn = card?.querySelector('.translate-btn');
+  if (btn) {
+    btn.innerHTML = '<span class="spinner"></span> 翻訳中...';
+    btn.disabled = true;
+  }
+
+  try {
+    const prompt = `以下のニュース記事タイトルと概要を日本語に翻訳してください。翻訳文のみ出力し、説明は不要です。
+
+タイトル: ${article.title}
+概要: ${article.description}
+
+形式:
+【タイトル】翻訳されたタイトル
+【概要】翻訳された概要`;
+
+    const result = await callClaude(prompt);
+    translationCache[cacheKey] = result;
+    showToast('翻訳完了');
+  } catch (err) {
+    showToast('翻訳に失敗しました', true);
+  }
+
+  // Re-render to show translation
+  renderArticles(currentCategory);
+  // Re-expand if was expanded
+  if (expandedArticle === `article-${currentCategory}-${idx}`) {
+    const detail = document.getElementById(`detail-article-${currentCategory}-${idx}`);
+    const inner = document.getElementById(`detail-inner-article-${currentCategory}-${idx}`);
+    if (detail && inner) {
+      inner.innerHTML = getDetailHTML(article, idx);
+      detail.classList.add('open');
+    }
+  }
+}
+
+async function translateContent(idx) {
+  const articles = articlesCache[currentCategory];
+  const article = articles[idx];
+  const url = article.link;
+  const cacheKey = `content-${url}`;
+
+  if (translationCache[cacheKey]) {
+    showToast('翻訳済みです');
+    return;
+  }
+
+  const content = contentCache[url];
+  if (!content || content === 'コンテンツの取得に失敗しました。') {
+    showToast('コンテンツがまだ読み込まれていません', true);
+    return;
+  }
+
+  showToast('翻訳中...');
+
+  try {
+    const truncated = content.slice(0, 3000);
+    const prompt = `以下のニュース記事を日本語に翻訳してください。自然な日本語で、翻訳文のみ出力してください。
+
+${truncated}`;
+
+    const result = await callClaude(prompt);
+    translationCache[cacheKey] = result;
+    showToast('翻訳完了');
+  } catch (err) {
+    showToast('翻訳に失敗しました', true);
+  }
+
+  refreshExpandedDetail(idx);
+}
+
+async function summarizeArticle(idx) {
+  const articles = articlesCache[currentCategory];
+  const article = articles[idx];
+  const url = article.link;
+
+  if (summaryCache[url]) {
+    showToast('要約済みです');
+    return;
+  }
+
+  // Use content if available, otherwise use description
+  const source = contentCache[url] || article.description;
+  if (!source) {
+    showToast('要約するコンテンツがありません', true);
+    return;
+  }
+
+  showToast('要約を生成中...');
+
+  try {
+    const truncated = source.slice(0, 3000);
+    const prompt = `以下のニュース記事を日本語で3行で要約してください。箇条書きではなく、3つの文で簡潔にまとめてください。要約のみ出力し、前置きは不要です。
+
+タイトル: ${article.title}
+内容: ${truncated}`;
+
+    const result = await callClaude(prompt);
+    summaryCache[url] = result;
+    showToast('要約完了');
+  } catch (err) {
+    showToast('要約の生成に失敗しました', true);
+  }
+
+  refreshExpandedDetail(idx);
+}
+
+// ─── Keyboard shortcuts ──────────────────────────────────────────
+document.addEventListener('keydown', (e) => {
+  if (e.key === 'Escape') {
+    closePopup();
+    closeSettings();
+    return;
+  }
+  if (e.target.tagName === 'INPUT') return;
+  const cats = ['japan', 'france', 'world', 'tech'];
+  if (e.key >= '1' && e.key <= '4') {
+    switchCategory(cats[parseInt(e.key) - 1]);
+  }
+  if (e.key === 'r' || e.key === 'R') {
+    delete articlesCache[currentCategory];
+    loadFeeds(currentCategory);
+  }
+});
+
+// ─── Daily Summary ───────────────────────────────────────────────
+function updateDailySummary(){
+  const allArticles = [];
+  for(const cat of Object.keys(articlesCache)){
+    allArticles.push(...(articlesCache[cat]||[]));
+  }
+  const top = allArticles.filter(a=>a.importance>=7).sort((a,b)=>(b.importance||0)-(a.importance||0)).slice(0,3);
+  if(top.length===0) return;
+  const el = document.getElementById('dailySummary');
+  const content = document.getElementById('dailySummaryContent');
+  content.innerHTML = top.map((a,i)=>
+    `<div style="margin-bottom:6px;cursor:pointer" onclick="switchCategory('${a.category}')">
+      <span style="color:#ffaa44;font-weight:700">${i+1}.</span> ${a.summary_ja||a.title}
+      <span style="font-size:0.7rem;color:#666;margin-left:4px">${a.source}</span>
+    </div>`
+  ).join('');
+  el.style.display='block';
+}
+
+// ─── Speech Briefing ─────────────────────────────────────────────
+function speakBriefing(){
+  const cachedCats = Object.keys(articlesCache);
+  const hasMultiple = cachedCats.length > 1;
+  const allArticles=[];
+  if(hasMultiple){
+    for(const cat of cachedCats) allArticles.push(...(articlesCache[cat]||[]));
+  } else {
+    allArticles.push(...(articlesCache[currentCategory]||[]));
+  }
+  const top=allArticles.filter(a=>a.importance>=7&&a.summary_ja).sort((a,b)=>(b.importance||0)-(a.importance||0)).slice(0,5);
+  if(top.length===0){showToast('要約がまだありません');return;}
+  const prefix = hasMultiple ? '今日のニュース。' : `${CATEGORY_LABELS[currentCategory]}のニュース。`;
+  const text=prefix+top.map((a,i)=>`${i+1}番。${a.summary_ja}`).join('。');
+  const u=new SpeechSynthesisUtterance(text);
+  u.lang='ja-JP';u.rate=1.1;
+  window.speechSynthesis.cancel();
+  window.speechSynthesis.speak(u);
+  showToast('音声ブリーフィング開始');
+}
+
+// ─── Category Swipe (mobile) ─────────────────────────────────────
+let swipeStartX2=0, swipeStartY2=0;
+document.getElementById('mainContent').addEventListener('touchstart',e=>{
+  swipeStartX2=e.touches[0].clientX;
+  swipeStartY2=e.touches[0].clientY;
+},{passive:true});
+document.getElementById('mainContent').addEventListener('touchend',e=>{
+  const dx=e.changedTouches[0].clientX-swipeStartX2;
+  const dy=e.changedTouches[0].clientY-swipeStartY2;
+  const absDx=Math.abs(dx), absDy=Math.abs(dy);
+  if(absDx<60)return;
+  if(absDy>0 && absDx/absDy<1.5)return; // must be >1.5 horizontal ratio
+  const cats=Object.keys(FEEDS);
+  const idx=cats.indexOf(currentCategory);
+  const next=dx<0?cats[(idx+1)%cats.length]:cats[(idx-1+cats.length)%cats.length];
+  if(navigator.vibrate) navigator.vibrate(10);
+  switchCategory(next);
+},{passive:true});
+
+// ─── Prefetch Adjacent Categories ────────────────────────────────
+function prefetchAdjacentCategories() {
+  const cats = Object.keys(FEEDS);
+  const idx = cats.indexOf(currentCategory);
+  const adjacent = [
+    cats[(idx - 1 + cats.length) % cats.length],
+    cats[(idx + 1) % cats.length],
+  ];
+  adjacent.forEach(cat => {
+    if (!articlesCache[cat]) {
+      const feeds = FEEDS[cat];
+      const proxyBase = getProxyUrl();
+      feeds.forEach(async feed => {
+        try {
+          const proxyUrl = proxyBase + encodeURIComponent(feed.url);
+          const res = await fetch(proxyUrl, { signal: AbortSignal.timeout(15000) });
+          if (!res.ok) return;
+          const text = await res.text();
+          const articles = parseRSS(text, feed);
+          if (!articlesCache[cat]) articlesCache[cat] = [];
+          articlesCache[cat].push(...articles);
+          articlesCache[cat].sort((a, b) => (b.dateObj?.getTime() || 0) - (a.dateObj?.getTime() || 0));
+        } catch (e) { /* silent prefetch */ }
+      });
+    }
+  });
+}
+
+if ('requestIdleCallback' in window) {
+  requestIdleCallback(() => prefetchAdjacentCategories(), { timeout: 5000 });
+} else {
+  setTimeout(prefetchAdjacentCategories, 3000);
+}
+
+// Initial accent color
+document.documentElement.style.setProperty('--accent', CATEGORY_COLORS[currentCategory]);
+</script>
+</body>
+</html>
